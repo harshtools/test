@@ -412,6 +412,26 @@ tbody td:first-child { padding-left: 20px; }
 /* ── PRINT ── */
 @media print { body * { display: none !important; } }
 
+/* ── PHOTO LIGHTBOX (clean, full-size view) ── */
+.photo-lightbox-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.92);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  z-index: 200; opacity: 0; pointer-events: none; transition: opacity .2s;
+  padding: 40px;
+}
+.photo-lightbox-overlay.open { opacity: 1; pointer-events: all; }
+.photo-lightbox-overlay img {
+  max-width: 90vw; max-height: 82vh;
+  object-fit: contain; border-radius: 6px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.6);
+}
+.photo-lightbox-sku {
+  color: rgba(255,255,255,0.85); font-family: 'DM Mono', monospace;
+  font-size: 13px; letter-spacing: 0.04em; margin-bottom: 16px;
+  text-align: center;
+}
+
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
@@ -515,6 +535,13 @@ tbody td:first-child { padding-left: 20px; }
       </div>
     </div>
   </div>
+</div>
+
+<!-- PHOTO-ONLY LIGHTBOX -->
+<div class="photo-lightbox-overlay" id="photoLightboxOverlay" onclick="closePhotoLightbox(event)">
+  <button class="modal-close" onclick="closePhotoLightbox()" style="position:fixed;top:22px;right:26px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;">×</button>
+  <div class="photo-lightbox-sku" id="photoLightboxSku"></div>
+  <img id="photoLightboxImg" src="" alt="" referrerpolicy="no-referrer">
 </div>
 
 <!-- PRINT SECTION (hidden from screen) -->
@@ -815,7 +842,7 @@ function render() {
     const tr = document.createElement('tr');
     if(isSel) tr.classList.add('selected');
     const photoCell = photo
-      ? `<img class="photo-thumb" src="${photo}" alt="${sku}" referrerpolicy="no-referrer" onclick="previewLabel(${idx})" onerror="this.outerHTML='<div class=&quot;photo-placeholder&quot;>✕</div>'">`
+      ? `<img class="photo-thumb" src="${photo}" alt="${sku}" referrerpolicy="no-referrer" onclick="openPhotoLightbox('${photo.replace(/'/g,"\\'")}','${sku.replace(/'/g,"\\'")}')" onerror="this.outerHTML='<div class=&quot;photo-placeholder&quot;>✕</div>'">`
       : `<div class="photo-placeholder">—</div>`;
     tr.innerHTML = `
       <td><input type="checkbox" class="chk" ${isSel?'checked':''} onchange="toggleRow(${idx},this)"></td>
@@ -963,6 +990,22 @@ function changeRowQty(idx, delta) {
   if (inp) inp.value = v;
 }
 
+// ── PHOTO LIGHTBOX (clean, distraction-free photo view) ──
+function openPhotoLightbox(url, sku) {
+  document.getElementById('photoLightboxImg').src = url;
+  document.getElementById('photoLightboxImg').alt = sku || '';
+  document.getElementById('photoLightboxSku').textContent = sku || '';
+  document.getElementById('photoLightboxOverlay').classList.add('open');
+}
+function closePhotoLightbox(e) {
+  if (!e || e.target === document.getElementById('photoLightboxOverlay') || e.target.closest('.modal-close')) {
+    document.getElementById('photoLightboxOverlay').classList.remove('open');
+  }
+}
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Escape') document.getElementById('photoLightboxOverlay').classList.remove('open');
+});
+
 // ── PREVIEW ──
 function previewLabel(idx) {
   const item = DATA[idx];
@@ -976,7 +1019,7 @@ function previewLabel(idx) {
 
   const photoWrap = document.getElementById('previewPhotoWrap');
   if (photo) {
-    photoWrap.innerHTML = `<img class="preview-photo" src="${photo}" alt="${sku}" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=&quot;preview-photo-empty&quot;>Photo failed to load</div>'">`;
+    photoWrap.innerHTML = `<img class="preview-photo" src="${photo}" alt="${sku}" referrerpolicy="no-referrer" style="cursor:pointer;" onclick="openPhotoLightbox('${photo.replace(/'/g,"\\'")}','${sku.replace(/'/g,"\\'")}')" onerror="this.outerHTML='<div class=&quot;preview-photo-empty&quot;>Photo failed to load</div>'">`;
   } else {
     photoWrap.innerHTML = `<div class="preview-photo-empty">No photo for this SKU</div>`;
   }
