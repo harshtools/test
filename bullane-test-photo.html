@@ -669,13 +669,13 @@ function normalizePhotoUrl(url) {
   // Already a direct/usable link
   if (/^https?:\/\//i.test(url) === false) return url; // relative path (e.g. photos/x.jpg) — leave as-is
 
-  // Google Drive "file/d/FILEID/view" or "open?id=FILEID" or "uc?...id=FILEID" style links
+  // Google Drive "file/d/FILEID/view" or "open?id=FILEID" or "uc?...id=FILEID" or "thumbnail?id=FILEID" style links
   let m = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
   if (!m) m = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   if (m && url.includes('drive.google.com')) {
     const fileId = m[1];
-    // Thumbnail endpoint embeds far more reliably than uc?export=view
-    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+    // lh3.googleusercontent.com is Google's most reliable format for hotlinked/embedded Drive images
+    return `https://lh3.googleusercontent.com/d/${fileId}`;
   }
 
   return url;
@@ -815,7 +815,7 @@ function render() {
     const tr = document.createElement('tr');
     if(isSel) tr.classList.add('selected');
     const photoCell = photo
-      ? `<img class="photo-thumb" src="${photo}" alt="${sku}" onclick="previewLabel(${idx})" onerror="this.outerHTML='<div class=&quot;photo-placeholder&quot;>✕</div>'">`
+      ? `<img class="photo-thumb" src="${photo}" alt="${sku}" referrerpolicy="no-referrer" onclick="previewLabel(${idx})" onerror="this.outerHTML='<div class=&quot;photo-placeholder&quot;>✕</div>'">`
       : `<div class="photo-placeholder">—</div>`;
     tr.innerHTML = `
       <td><input type="checkbox" class="chk" ${isSel?'checked':''} onchange="toggleRow(${idx},this)"></td>
@@ -976,7 +976,7 @@ function previewLabel(idx) {
 
   const photoWrap = document.getElementById('previewPhotoWrap');
   if (photo) {
-    photoWrap.innerHTML = `<img class="preview-photo" src="${photo}" alt="${sku}" onerror="this.outerHTML='<div class=&quot;preview-photo-empty&quot;>Photo failed to load</div>'">`;
+    photoWrap.innerHTML = `<img class="preview-photo" src="${photo}" alt="${sku}" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=&quot;preview-photo-empty&quot;>Photo failed to load</div>'">`;
   } else {
     photoWrap.innerHTML = `<div class="preview-photo-empty">No photo for this SKU</div>`;
   }
