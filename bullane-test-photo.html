@@ -527,6 +527,7 @@ tbody td:first-child { padding-left: 20px; }
     <h2 id="modalTitle">Label Preview</h2>
     <div class="modal-sub" id="modalSub"></div>
     <div class="preview-photo-wrap" id="previewPhotoWrap"></div>
+    <div class="preview-photo-wrap" id="previewPhotoWrap"></div>
     <div style="display:flex;justify-content:center;">
       <div class="label-card" id="previewCard">
         <div class="lbl-top" id="prevTop"></div>
@@ -1019,9 +1020,9 @@ function previewLabel(idx) {
 
   const photoWrap = document.getElementById('previewPhotoWrap');
   if (photo) {
-    photoWrap.innerHTML = `<img class="preview-photo" src="${photo}" alt="${sku}" referrerpolicy="no-referrer" style="cursor:pointer;" onclick="openPhotoLightbox('${photo.replace(/'/g,"\\'")}','${sku.replace(/'/g,"\\'")}')" onerror="this.outerHTML='<div class=&quot;preview-photo-empty&quot;>Photo failed to load</div>'">`;
+    photoWrap.innerHTML = `<button class="preview-btn" style="margin-bottom:16px;" onclick="openPhotoLightbox('${photo.replace(/'/g,"\\'")}','${sku.replace(/'/g,"\\'")}')">🖼️ View Photo</button>`;
   } else {
-    photoWrap.innerHTML = `<div class="preview-photo-empty">No photo for this SKU</div>`;
+    photoWrap.innerHTML = '';
   }
 
   const cont = document.getElementById('prevBarcode');
