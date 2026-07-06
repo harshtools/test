@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Bullane — Barcode Label Printer (TEST — Photo Column)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap');
+
+  :root {
+  --bg: #f4f1ec;
+  --bg2: #ece9e3;
+  --surface: #ffffff;
+  --surface2: #f9f7f4;
+  --border: #e0dbd2;
+  --border2: #ccc7be;
+  --text: #1a1814;
+  --text2: #5a574f;
+  --text3: #9a978f;
+  --accent: #c8411a;
+  --accent2: #e05a30;
+  --accentdim: #fdf0eb;
+  --green: #2d7a4f;
+  --greendim: #eaf4ef;
+  --orange: #c8411a;
+  --red: #c8411a;
+  --label-w: 380px;
+  --label-h: 200px;
+  --header-bg: #1a1814;
+  --shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+body.light {
+  --bg: #f4f1ec;
+  --bg2: #ece9e3;
+  --surface: #ffffff;
+  --surface2: #f9f7f4;
+  --border: #e0dbd2;
+  --border2: #ccc7be;
+  --text: #1a1814;
+  --text2: #5a574f;
+  --text3: #9a978f;
+  --accent: #c8411a;
+  --accent2: #e05a30;
+  --accentdim: #fdf0eb;
+  --green: #2d7a4f;
+  --greendim: #eaf4ef;
+  --header-bg: #1a1814;
+  --shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+body:not(.light) {
+  --bg: #111210;
+  --bg2: #1a1916;
+  --surface: #1f1e1b;
+  --surface2: #252320;
+  --border: #2e2c28;
+  --border2: #3a3832;
+  --text: #f0ede8;
+  --text2: #b0ada6;
+  --text3: #6b6860;
+  --accent: #e05a30;
+  --accent2: #f07048;
+  --accentdim: #2a1a12;
+  --green: #4a9a6f;
+  --greendim: #122010;
+  --header-bg: #0d0c0b;
+  --shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Syne', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  transition: background .3s, color .3s;
+}
+
+/* ── HEADER ── */
+header {
+  background: var(--header-bg);
+  color: #fff;
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 62px;
+  border-bottom: 3px solid var(--accent);
+  position: sticky; top: 0; z-index: 50;
+}
+.header-left { display: flex; align-items: center; gap: 14px; }
+.logo-mark {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: linear-gradient(135deg, #c8411a, #e05a30);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 800; color: #fff;
+  box-shadow: 0 0 18px rgba(200,65,26,0.4);
+  flex-shrink: 0;
+}
+.brand-name {
+  font-size: 19px; font-weight: 800;
+  letter-spacing: 0.04em; color: #fff;
+}
+.brand-name span {
+  background: linear-gradient(90deg, #e8a090, #ffffff);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.brand-sub {
+  font-family: 'DM Mono', monospace; font-size: 10px;
+  color: rgba(255,255,255,0.35); letter-spacing: 0.14em;
+  text-transform: uppercase; margin-top: 1px;
+}
+.test-badge {
+  font-family: 'DM Mono', monospace; font-size: 10px;
+  background: rgba(255,193,7,0.15); color: #ffc107;
+  border: 1px solid rgba(255,193,7,0.3);
+  padding: 3px 10px; border-radius: 20px; letter-spacing: 0.08em;
+  text-transform: uppercase; margin-left: 10px;
+}
+.header-right { display: flex; align-items: center; gap: 10px; }
+.hpill {
+  display: flex; align-items: center; gap: 7px;
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
+  padding: 5px 12px; border-radius: 20px;
+  font-family: 'DM Mono', monospace; font-size: 11px; color: rgba(255,255,255,0.5);
+}
+.hpill strong { color: rgba(255,255,255,0.9); font-weight: 500; }
+.hpill .dot { width: 6px; height: 6px; border-radius: 50%; background: #e8a090; box-shadow: 0 0 6px #e8a090; }
+
+/* Theme toggle */
+.theme-toggle {
+  display: flex; align-items: center;
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 20px; padding: 3px; gap: 2px;
+}
+.theme-btn {
+  padding: 5px 12px; border-radius: 16px; border: none;
+  font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 600;
+  cursor: pointer; transition: all .2s; color: rgba(255,255,255,0.5);
+  background: transparent;
+  display: flex; align-items: center; gap: 5px;
+}
+.theme-btn.active {
+  background: rgba(255,255,255,0.15); color: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* ── TOOLBAR ── */
+.toolbar {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 32px;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  transition: background .3s;
+}
+
+.search-wrap { position: relative; flex: 1; min-width: 220px; max-width: 400px; }
+.search-wrap svg {
+  position: absolute; left: 12px; top: 50%;
+  transform: translateY(-50%); color: var(--text3); pointer-events: none;
+}
+.search-input {
+  width: 100%; padding: 9px 14px 9px 38px;
+  border: 1.5px solid var(--border); border-radius: 9px;
+  font-family: 'DM Mono', monospace; font-size: 12px;
+  background: var(--surface); color: var(--text); outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+.search-input::placeholder { color: var(--text3); }
+.search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(200,65,26,0.15); }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 16px; border: none; border-radius: 9px;
+  font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 600;
+  cursor: pointer; white-space: nowrap; transition: all .18s;
+}
+.btn-import { background: var(--surface2); color: var(--text2); border: 1.5px solid var(--border2); }
+.btn-import:hover { border-color: var(--accent); color: var(--accent); background: var(--accentdim); }
+.btn-select { background: var(--surface2); color: var(--text2); border: 1.5px solid var(--border2); }
+.btn-select:hover { border-color: var(--accent); color: var(--accent); }
+.btn-select.active-all { border-color: var(--accent); color: var(--accent); background: var(--accentdim); }
+.btn-primary { background: var(--accent); color: #fff; box-shadow: 0 0 12px rgba(200,65,26,0.3); }
+.btn-primary:hover { background: var(--accent2); box-shadow: 0 0 18px rgba(200,65,26,0.4); }
+.btn-outline { background: var(--greendim); color: var(--accent); border: 1.5px solid rgba(200,65,26,0.3); }
+.btn-outline:hover { background: rgba(200,65,26,0.06); box-shadow: 0 0 10px rgba(200,65,26,0.15); }
+
+.qty-wrap {
+  display: flex; align-items: center;
+  border: 1.5px solid var(--border2); border-radius: 9px; overflow: hidden;
+  background: var(--surface2);
+}
+.qty-wrap label {
+  padding: 0 10px; font-size: 10px; font-weight: 700; color: var(--text3);
+  background: var(--bg2); border-right: 1.5px solid var(--border);
+  height: 100%; display: flex; align-items: center;
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+.qty-input {
+  width: 52px; padding: 9px 6px; border: none; outline: none;
+  font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500;
+  background: transparent; color: var(--text); text-align: center;
+}
+.qty-btn {
+  width: 30px; height: 100%; background: none; border: none;
+  border-left: 1.5px solid var(--border); font-size: 16px;
+  cursor: pointer; color: var(--text2);
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.qty-btn:hover { color: var(--accent); background: var(--accentdim); }
+
+.stats {
+  margin-left: auto; font-family: 'DM Mono', monospace;
+  font-size: 11px; color: var(--text3);
+  display: flex; align-items: center; gap: 14px;
+}
+.stats .count { font-weight: 500; color: var(--text2); }
+
+/* SEL BAR */
+.sel-bar {
+  display: none;
+  background: linear-gradient(90deg, rgba(200,65,26,0.07), transparent);
+  border-bottom: 1px solid rgba(200,65,26,0.18);
+  padding: 9px 32px; align-items: center; gap: 12px;
+  animation: slideDown .2s ease;
+}
+.sel-bar.visible { display: flex; }
+@keyframes slideDown { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:none} }
+.sel-bar-text { font-size: 12px; font-weight: 600; color: var(--accent2); }
+.sel-clear { font-size: 11px; color: var(--text3); cursor: pointer; margin-left: auto; }
+.sel-clear:hover { color: var(--red); }
+
+/* ── TABLE ── */
+.table-wrap { padding: 24px 32px; overflow-x: auto; }
+
+table {
+  width: 100%; border-collapse: separate; border-spacing: 0;
+  background: var(--surface); border-radius: 12px;
+  border: 1px solid var(--border); overflow: hidden;
+  box-shadow: var(--shadow);
+  transition: background .3s;
+}
+thead tr { background: var(--header-bg); }
+thead th {
+  padding: 12px 16px; text-align: left;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+  text-transform: uppercase; color: rgba(255,255,255,0.5);
+  border-bottom: 1px solid var(--border2);
+}
+thead th:first-child { padding-left: 20px; width: 44px; }
+tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: var(--surface2); }
+tbody tr.selected { background: var(--accentdim); }
+tbody td { padding: 11px 16px; font-size: 13px; }
+tbody td:first-child { padding-left: 20px; }
+
+.sku-cell { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text2); }
+.label-cell {
+  display: inline-block; font-family: 'DM Mono', monospace;
+  font-size: 12px; font-weight: 600;
+  background: var(--surface2); border: 1px solid var(--border2);
+  padding: 3px 10px; border-radius: 6px; color: var(--accent2);
+}
+.chk { width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent); }
+.preview-btn {
+  padding: 5px 12px; border: 1.5px solid var(--border2); border-radius: 7px;
+  background: transparent; font-size: 11px; font-family: 'Syne', sans-serif;
+  font-weight: 600; cursor: pointer; color: var(--text3); transition: all .15s;
+}
+.preview-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accentdim); }
+
+.photo-thumb {
+  width: 42px; height: 42px; border-radius: 8px; object-fit: cover;
+  border: 1.5px solid var(--border2); background: var(--surface2);
+  cursor: pointer; display: block; transition: transform .15s, border-color .15s;
+}
+.photo-thumb:hover { transform: scale(1.08); border-color: var(--accent); }
+.photo-placeholder {
+  width: 42px; height: 42px; border-radius: 8px;
+  border: 1.5px dashed var(--border2); background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text3); font-size: 16px;
+}
+
+.empty { text-align: center; padding: 60px 0; color: var(--text3); font-size: 14px; }
+.empty svg { margin-bottom: 12px; opacity: .3; }
+
+/* ── PAGINATION ── */
+.pagination { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 0 32px 28px; }
+.pg-btn {
+  padding: 7px 13px; border-radius: 8px; border: 1.5px solid var(--border);
+  background: var(--surface); font-size: 12px; font-family: 'DM Mono', monospace;
+  cursor: pointer; color: var(--text3); transition: all .15s;
+}
+.pg-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accentdim); }
+.pg-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); box-shadow: 0 0 10px rgba(200,65,26,0.3); }
+.pg-btn:disabled { opacity: .3; pointer-events: none; }
+
+/* ── MODALS ── */
+.modal-overlay, .import-modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(5,8,20,.7);
+  backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100; opacity: 0; pointer-events: none; transition: opacity .25s;
+}
+.modal-overlay.open, .import-modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal, .import-modal {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: 18px; padding: 28px; width: 90%;
+  box-shadow: 0 40px 80px rgba(0,0,0,.5);
+  transform: translateY(20px) scale(0.97);
+  transition: transform .28s cubic-bezier(.34,1.4,.64,1);
+  position: relative;
+}
+.modal { max-width: 520px; }
+.import-modal { max-width: 460px; }
+.modal-overlay.open .modal, .import-modal-overlay.open .import-modal { transform: none; }
+.modal h2, .import-modal h2 { font-size: 17px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+.modal .modal-sub { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text3); margin-bottom: 20px; }
+.import-modal p { font-size: 12px; color: var(--text2); margin-bottom: 18px; line-height: 1.6; }
+.modal-close {
+  position: absolute; top: 14px; right: 16px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--text3); font-size: 14px; transition: all .15s;
+}
+.modal-close:hover { background: rgba(239,68,68,0.15); border-color: var(--red); color: var(--red); }
+
+/* LABEL CARD */
+.label-card {
+  width: var(--label-w); height: var(--label-h); background: #fff;
+  border-radius: 10px; border: 2px solid var(--border2);
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 12px 16px 10px;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  box-shadow: 0 8px 32px rgba(0,0,0,.3);
+}
+.label-card .lbl-top { font-size: 28px; font-weight: 500; text-align: center; color: #111; margin-bottom: 6px; line-height: 1.1; }
+.label-card canvas, .label-card svg { width: 90% !important; max-width: 90%; }
+.label-card .lbl-bottom { font-size: 26px; font-weight: 700; text-align: center; color: #111; margin-top: 6px; letter-spacing: 0.02em; }
+
+/* PREVIEW PHOTO IN MODAL */
+.preview-photo-wrap {
+  display: flex; justify-content: center; margin-bottom: 16px;
+}
+.preview-photo {
+  max-width: 220px; max-height: 220px; border-radius: 12px;
+  border: 1.5px solid var(--border2); object-fit: contain;
+  background: var(--surface2);
+}
+.preview-photo-empty {
+  width: 220px; height: 120px; border-radius: 12px;
+  border: 1.5px dashed var(--border2); background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text3); font-size: 12px; font-family: 'DM Mono', monospace;
+}
+
+/* DROP ZONE */
+.drop-zone {
+  border: 2px dashed var(--border2); border-radius: 12px;
+  padding: 32px 20px; text-align: center; cursor: pointer;
+  transition: all .2s; background: var(--bg); margin-bottom: 14px;
+}
+.drop-zone:hover, .drop-zone.drag-over { border-color: var(--accent); background: var(--accentdim); }
+.drop-zone svg { margin-bottom: 10px; color: var(--text3); }
+.drop-zone .dz-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.drop-zone .dz-sub { font-size: 12px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.drop-zone input[type=file] { display: none; }
+
+.import-result {
+  background: var(--bg); border-radius: 8px; padding: 12px 14px;
+  margin-bottom: 14px; font-family: 'DM Mono', monospace; font-size: 12px;
+  color: var(--text2); display: none; border-left: 3px solid var(--accent);
+}
+.import-result.visible { display: block; }
+.import-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.btn-cancel { background: var(--surface2); border: 1.5px solid var(--border2); color: var(--text2); }
+.btn-cancel:hover { border-color: var(--red); color: var(--red); }
+.btn-confirm { background: var(--accent); color: #fff; box-shadow: 0 0 10px rgba(200,65,26,0.25); }
+.btn-confirm:hover { background: var(--accent2); }
+
+/* ── PER-ROW QTY ── */
+  .row-qty-wrap {
+    display: inline-flex; align-items: center;
+    border: 1.5px solid var(--border2); border-radius: 8px;
+    overflow: hidden; background: var(--surface2);
+  }
+  .row-qty-btn {
+    width: 26px; height: 28px; background: none; border: none;
+    color: var(--text2); font-size: 15px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s; flex-shrink: 0;
+  }
+  .row-qty-btn:hover { color: var(--accent2); background: var(--accentdim); }
+  .row-qty-input {
+    width: 36px; padding: 0 2px; border: none; outline: none;
+    background: transparent; font-family: 'DM Mono', monospace;
+    font-size: 12px; font-weight: 600; color: var(--text);
+    text-align: center; height: 28px;
+  }
+
+/* ── PRINT ── */
+@media print { body * { display: none !important; } }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #aaa; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="logo-mark">B</div>
+    <div>
+      <div class="brand-name">BULL<span>ANE</span> <span class="test-badge">TEST · PHOTO</span></div>
+      <div class="brand-sub">Barcode Label Printer</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="hpill"><div class="dot"></div><strong id="headerCount">0</strong>&nbsp;SKUs</div>
+    <div class="hpill">Selected&nbsp;<strong id="headerSel">0</strong></div>
+    <div class="theme-toggle">
+      <button class="theme-btn active" id="btnDark" onclick="setTheme('dark')">🌙 Dark</button>
+      <button class="theme-btn" id="btnLight" onclick="setTheme('light')">☀️ Light</button>
+    </div>
+  </div>
+</header>
+
+<div class="toolbar">
+  <!-- Search -->
+  <div class="search-wrap">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input class="search-input" id="searchInput" type="text" placeholder="Search SKU or label…" autocomplete="off">
+  </div>
+
+  <!-- Refresh Data -->
+  <button class="btn btn-import" onclick="loadFromGoogleSheet()">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+    Refresh Data
+  </button>
+
+  <!-- Select All -->
+  <button class="btn btn-select" id="selectAllBtn" onclick="handleSelectAllBtn()">
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    <span id="selectAllLabel">Select All</span>
+  </button>
+
+  <!-- Print -->
+  <button class="btn btn-primary" onclick="printSelected()">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+    Print Selected
+  </button>
+
+  <div class="stats">
+    <span>Showing <span class="count" id="showCount">0</span> of <span class="count" id="totalCount">0</span></span>
+    <span>Selected: <span class="count" id="selCount">0</span></span>
+  </div>
+</div>
+
+<!-- TABLE -->
+<div class="sel-bar" id="selBar">
+  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+  <div class="sel-bar-text"><span id="selCount">0</span> items selected — ready to print or download</div>
+  <span class="sel-clear" onclick="clearAll()">✕ Clear</span>
+</div>
+
+<div class="table-wrap">
+  <table id="mainTable">
+    <thead>
+      <tr>
+        <th><input type="checkbox" class="chk" id="headerChk" onchange="toggleSelectAll()"></th>
+        <th>#</th>
+        <th>Photo</th>
+        <th>SKU</th>
+        <th>Barcode Label</th>
+        <th style="width:120px;">QTY</th>
+        <th>Preview</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+  <div class="empty" id="emptyState" style="display:none;">
+    <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+    <div id="emptyMsg">No data loaded — click <strong>Import Excel</strong> to get started</div>
+  </div>
+</div>
+
+<div class="pagination" id="pagination"></div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <h2 id="modalTitle">Label Preview</h2>
+    <div class="modal-sub" id="modalSub"></div>
+    <div class="preview-photo-wrap" id="previewPhotoWrap"></div>
+    <div style="display:flex;justify-content:center;">
+      <div class="label-card" id="previewCard">
+        <div class="lbl-top" id="prevTop"></div>
+        <svg id="prevBarcode"></svg>
+        <div class="lbl-bottom" id="prevBottom"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PRINT SECTION (hidden from screen) -->
+<div id="printSection" style="display:none;"></div>
+
+<!-- IMPORT MODAL -->
+<div class="import-modal-overlay" id="importModalOverlay" onclick="closeImportModal(event)">
+  <div class="import-modal">
+    <button class="modal-close" onclick="closeImportModal()" style="position:absolute;top:16px;right:18px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);">×</button>
+    <h2>📥 Import Excel File</h2>
+    <p>Upload an Excel (.xlsx) file with <strong>Column A = SKU</strong>, <strong>Column B = Barcode Label</strong>, <strong>Column C = Photo URL (optional)</strong>. <strong style="color:#f87171;">⚠️ The current list will be fully replaced</strong> with the new file.</p>
+
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+      <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      <div class="dz-title">Click to browse or drag & drop</div>
+      <div class="dz-sub">Supports .xlsx and .xls files</div>
+      <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="handleFileSelect(event)">
+    </div>
+
+    <div class="import-result" id="importResult"></div>
+
+    <div class="import-actions">
+      <button class="btn btn-outline" onclick="closeImportModal()">Cancel</button>
+      <button class="btn btn-primary" id="importConfirmBtn" onclick="confirmImport()" style="display:none;">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        Replace List
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+// ── IMPORT EXCEL ──
+let pendingImport = [];
+
+function openImportModal() {
+  pendingImport = [];
+  document.getElementById('importResult').className = 'import-result';
+  document.getElementById('importResult').textContent = '';
+  document.getElementById('importConfirmBtn').style.display = 'none';
+  document.getElementById('fileInput').value = '';
+  document.getElementById('importModalOverlay').classList.add('open');
+}
+
+function closeImportModal(e) {
+  if (!e || e.target === document.getElementById('importModalOverlay')) {
+    document.getElementById('importModalOverlay').classList.remove('open');
+  }
+}
+
+function onDragOver(e) { e.preventDefault(); document.getElementById('dropZone').classList.add('drag-over'); }
+function onDragLeave(e) { document.getElementById('dropZone').classList.remove('drag-over'); }
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) processFile(file);
+}
+
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+      // Detect if first row is header
+      let startRow = 0;
+      const firstA = String(rows[0]?.[0] || '').toLowerCase();
+      if (firstA === 'sku' || firstA === 'skus') startRow = 1;
+
+      pendingImport = [];
+
+      for (let i = startRow; i < rows.length; i++) {
+        const sku = String(rows[i][0] || '').trim();
+        const label = String(rows[i][1] || '').trim();
+        const photo = String(rows[i][2] || '').trim();
+        if (!sku || !label) continue;
+        pendingImport.push({ 'SKU': sku, 'Barcode Lable': label, 'Photo': normalizePhotoUrl(photo) });
+      }
+
+      const resultEl = document.getElementById('importResult');
+      resultEl.classList.add('visible');
+      if (pendingImport.length === 0) {
+        resultEl.textContent = `⚠️ No valid rows found. Check your file format.`;
+        document.getElementById('importConfirmBtn').style.display = 'none';
+      } else {
+        resultEl.textContent = `✅ Found ${pendingImport.length} item(s) ready. Click "Replace List" — old data will be removed.`;
+        document.getElementById('importConfirmBtn').style.display = 'inline-flex';
+      }
+    } catch(err) {
+      const resultEl = document.getElementById('importResult');
+      resultEl.classList.add('visible');
+      resultEl.textContent = '❌ Could not read file. Please make sure it is a valid .xlsx file.';
+      document.getElementById('importConfirmBtn').style.display = 'none';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function confirmImport() {
+  if (pendingImport.length === 0) return;
+
+  // Fully replace old data with new
+  DATA.splice(0, DATA.length, ...pendingImport);
+
+  DATA.sort((a, b) => {
+    const baseA = getBaseKey(a['SKU']);
+    const baseB = getBaseKey(b['SKU']);
+    if (baseA < baseB) return -1;
+    if (baseA > baseB) return 1;
+    return getSizeRank(a['SKU']) - getSizeRank(b['SKU']);
+  });
+  filtered = [...DATA];
+  currentPage = 1;
+  selected.clear();
+
+  // ── Save to localStorage so it persists on next open ──
+  try {
+    localStorage.setItem('bullane_barcode_data_test', JSON.stringify(DATA));
+  } catch(e) { console.warn('Storage save failed:', e); }
+
+  // Update all counters
+  document.getElementById('headerCount').textContent = DATA.length;
+  document.getElementById('totalCount').textContent = DATA.length;
+  document.getElementById('selCount').textContent = 0;
+  render();
+  closeImportModal();
+  pendingImport = [];
+}
+</script>
+
+<script>
+const DATA = [];
+// ── TEST SHEET CSV URL (A=SKU, B=Barcode, C=Photo) ──
+const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRg1g1x-ddQy4zcLiHmChQJd5oNl7-dWwLFBY1VVBZAzwChoeN-Ujo6Ozba55_o0dx_EghQduZ_tRAd/pub?gid=0&single=true&output=csv';
+
+// ── Convert Google Drive share links into direct-viewable image links ──
+function normalizePhotoUrl(url) {
+  if (!url) return '';
+  url = url.trim();
+  if (!url) return '';
+
+  // Already a direct/usable link
+  if (/^https?:\/\//i.test(url) === false) return url; // relative path (e.g. photos/x.jpg) — leave as-is
+
+  // Google Drive "file/d/FILEID/view" or "open?id=FILEID" style links
+  let m = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (!m) m = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (m && url.includes('drive.google.com')) {
+    const fileId = m[1];
+    return `https://drive.google.com/uc?export=view&id=${fileId}`;
+  }
+
+  return url;
+}
+
+// ── Parse a CSV line respecting quoted commas ──
+function parseCsvLine(line) {
+  const result = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i+1] === '"') { cur += '"'; i++; }
+      else { inQuotes = !inQuotes; }
+    } else if (ch === ',' && !inQuotes) {
+      result.push(cur); cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  result.push(cur);
+  return result;
+}
+
+async function loadFromGoogleSheet() {
+  const statusEl = document.getElementById('emptyMsg');
+  if (statusEl) statusEl.innerHTML = '⏳ Loading data from Google Sheet...';
+  try {
+    const res = await fetch(SHEET_CSV_URL + '&t=' + Date.now(), { cache: 'no-store' });
+    const text = await res.text();
+    const lines = text.trim().split('\n');
+    const newData = [];
+    for (let i = 1; i < lines.length; i++) {
+      if (!lines[i].trim()) continue;
+      const cols = parseCsvLine(lines[i]);
+      const sku = (cols[0] || '').trim();
+      const label = (cols[1] || '').trim();
+      const photoRaw = (cols[2] || '').trim();
+      if (sku && label) {
+        newData.push({ 'SKU': sku, 'Barcode Lable': label, 'Photo': normalizePhotoUrl(photoRaw) });
+      }
+    }
+    if (newData.length > 0) {
+      DATA.splice(0, DATA.length, ...newData);
+      DATA.sort((a, b) => {
+        const baseA = getBaseKey(a['SKU']);
+        const baseB = getBaseKey(b['SKU']);
+        if (baseA < baseB) return -1;
+        if (baseA > baseB) return 1;
+        return getSizeRank(a['SKU']) - getSizeRank(b['SKU']);
+      });
+      filtered = [...DATA];
+      currentPage = 1;
+      document.getElementById('headerCount').textContent = DATA.length;
+      document.getElementById('totalCount').textContent = DATA.length;
+      render();
+    } else {
+      if (statusEl) statusEl.innerHTML = '⚠️ No data found in Google Sheet.';
+    }
+  } catch(e) {
+    console.error('Failed to load Google Sheet:', e);
+    if (statusEl) statusEl.innerHTML = '❌ Failed to load data. Please check your internet connection.';
+  }
+}
+
+
+const PAGE_SIZE = 20;
+const rowQty = new Map(); // stores qty per data index
+
+// ── SIZE SORT: S → M → L → XL ──
+const SIZE_ORDER = { 'S': 0, 'M': 1, 'L': 2, 'XL': 3 };
+function getSizeRank(sku) {
+  const m = sku.match(/-(S|M|L|XL)$/i);
+  if (!m) return 99;
+  return SIZE_ORDER[m[1].toUpperCase()] ?? 99;
+}
+function getBaseKey(sku) {
+  return sku.replace(/-(S|M|L|XL)$/i, '');
+}
+DATA.sort((a, b) => {
+  const baseA = getBaseKey(a['SKU']);
+  const baseB = getBaseKey(b['SKU']);
+  if (baseA < baseB) return -1;
+  if (baseA > baseB) return 1;
+  return getSizeRank(a['SKU']) - getSizeRank(b['SKU']);
+});
+
+let filtered = [...DATA];
+let currentPage = 1;
+let selected = new Set();
+
+// ── BARCODE HELPER ──
+function makeBarcodeSVG(text, width=340, height=120) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  try {
+    JsBarcode(svg, text, {
+      format: 'CODE128',
+      width: 2.8,
+      height: height,
+      displayValue: false,
+      margin: 0,
+      background: '#ffffff',
+      lineColor: '#000000'
+    });
+    svg.setAttribute('width', width);
+    svg.setAttribute('height', height);
+  } catch(e) {}
+  return svg;
+}
+
+// ── RENDER TABLE ──
+function render() {
+  const tbody = document.getElementById('tableBody');
+  const start = (currentPage-1)*PAGE_SIZE;
+  const page = filtered.slice(start, start+PAGE_SIZE);
+  
+  document.getElementById('showCount').textContent = filtered.length;
+  document.getElementById('selCount').textContent = selected.size;
+  document.getElementById('emptyState').style.display = filtered.length ? 'none' : 'block';
+  document.getElementById('mainTable').style.display = filtered.length ? '' : 'none';
+  const emptyMsg = document.getElementById('emptyMsg');
+  if (emptyMsg) emptyMsg.innerHTML = DATA.length === 0 ? 'No data loaded — click <strong>Import Excel</strong> to get started' : 'No results found for your search';
+
+  tbody.innerHTML = '';
+  page.forEach((item, i) => {
+    const idx = DATA.indexOf(item);
+    const globalIdx = start + i + 1;
+    const sku = item['SKU'];
+    const label = item['Barcode Lable'];
+    const photo = item['Photo'] || '';
+    const isSel = selected.has(idx);
+    const qty = rowQty.get(idx) || 1;
+    const tr = document.createElement('tr');
+    if(isSel) tr.classList.add('selected');
+    const photoCell = photo
+      ? `<img class="photo-thumb" src="${photo}" alt="${sku}" onclick="previewLabel(${idx})" onerror="this.outerHTML='<div class=&quot;photo-placeholder&quot;>✕</div>'">`
+      : `<div class="photo-placeholder">—</div>`;
+    tr.innerHTML = `
+      <td><input type="checkbox" class="chk" ${isSel?'checked':''} onchange="toggleRow(${idx},this)"></td>
+      <td style="color:var(--text3);font-family:'DM Mono',monospace;font-size:11px;">${globalIdx}</td>
+      <td>${photoCell}</td>
+      <td class="sku-cell">${sku}</td>
+      <td><span class="label-cell">${label}</span></td>
+      <td>
+        <div class="row-qty-wrap">
+          <button class="row-qty-btn" onclick="changeRowQty(${idx},-1)">−</button>
+          <input class="row-qty-input" type="number" value="${qty}" min="1" max="99"
+            onchange="setRowQty(${idx},this.value)"
+            oninput="setRowQty(${idx},this.value)"
+            id="rqty-${idx}">
+          <button class="row-qty-btn" onclick="changeRowQty(${idx},1)">+</button>
+        </div>
+      </td>
+      <td><button class="preview-btn" onclick="previewLabel(${idx})">Preview</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  renderPagination();
+  syncSelectAllUI();
+}
+
+// ── PAGINATION ──
+function renderPagination() {
+  const total = Math.ceil(filtered.length/PAGE_SIZE);
+  const pg = document.getElementById('pagination');
+  pg.innerHTML = '';
+  if(total <= 1) return;
+
+  const prev = document.createElement('button');
+  prev.className='pg-btn'; prev.textContent='←'; prev.disabled=(currentPage===1);
+  prev.onclick=()=>{currentPage--;render();};
+  pg.appendChild(prev);
+
+  const range = [];
+  for(let i=1;i<=total;i++){
+    if(i===1||i===total||Math.abs(i-currentPage)<=2) range.push(i);
+    else if(range[range.length-1]!=='…') range.push('…');
+  }
+  range.forEach(r=>{
+    if(r==='…'){
+      const sp=document.createElement('span');
+      sp.style.cssText='padding:0 4px;color:var(--text2);font-size:13px;';
+      sp.textContent='…'; pg.appendChild(sp); return;
+    }
+    const b=document.createElement('button');
+    b.className='pg-btn'+(r===currentPage?' active':'');
+    b.textContent=r; b.onclick=()=>{currentPage=r;render();};
+    pg.appendChild(b);
+  });
+
+  const next=document.createElement('button');
+  next.className='pg-btn'; next.textContent='→'; next.disabled=(currentPage===total);
+  next.onclick=()=>{currentPage++;render();};
+  pg.appendChild(next);
+}
+
+// ── SEARCH ──
+document.getElementById('searchInput').addEventListener('input', function(){
+  const q = this.value.trim().toLowerCase();
+  if (!q) {
+    filtered = [...DATA];
+  } else {
+    filtered = DATA.filter(d => {
+      const sku = d['SKU'].toLowerCase();
+      const label = d['Barcode Lable'].toLowerCase();
+      // Extract the leading number from SKU (e.g. "05" from "05SM_...")
+      const skuNumMatch = sku.match(/^(\d+)/);
+      const skuNum = skuNumMatch ? skuNumMatch[1] : '';
+      // If query is purely numeric, match only from the start of the SKU number
+      if (/^\d+$/.test(q)) {
+        return skuNum === q || skuNum.startsWith(q) && skuNum.length === q.length;
+      }
+      // Otherwise match SKU or label from start
+      return sku.startsWith(q) || label.startsWith(q) || sku.includes(q);
+    });
+  }
+  currentPage=1; render();
+});
+
+// ── SELECT ──
+function toggleRow(idx, chk) {
+  if(chk.checked) selected.add(idx); else selected.delete(idx);
+  document.getElementById('selCount').textContent = selected.size;
+  chk.closest('tr').classList.toggle('selected', chk.checked);
+  syncSelectAllUI();
+}
+
+function syncSelectAllUI() {
+  const allIdxs = filtered.map(item => DATA.indexOf(item));
+  const allChosen = allIdxs.length > 0 && allIdxs.every(i => selected.has(i));
+  const hchk = document.getElementById('headerChk');
+  if(hchk) hchk.checked = allChosen;
+  const lbl = document.getElementById('selectAllLabel');
+  if(lbl) lbl.textContent = allChosen ? 'Deselect All' : 'Select All';
+}
+
+function handleSelectAllBtn() {
+  const allIdxs = filtered.map(item => DATA.indexOf(item));
+  const allChosen = allIdxs.every(i => selected.has(i));
+  if(allChosen) {
+    allIdxs.forEach(i => selected.delete(i));
+  } else {
+    allIdxs.forEach(i => selected.add(i));
+  }
+  document.getElementById('selCount').textContent = selected.size;
+  render();
+}
+
+function toggleSelectAll() {
+  // header checkbox in table
+  const hchk = document.getElementById('headerChk');
+  const shouldSelect = hchk.checked;
+  filtered.forEach(item => {
+    const i = DATA.indexOf(item);
+    if(shouldSelect) selected.add(i); else selected.delete(i);
+  });
+  document.getElementById('selCount').textContent = selected.size;
+  syncSelectAllUI();
+  render();
+}
+
+function clearAll() {
+  selected.clear();
+  document.getElementById('selCount').textContent = 0;
+  syncSelectAllUI();
+  render();
+}
+
+// ── PER-ROW QTY ──
+function setRowQty(idx, val) {
+  const v = Math.max(1, Math.min(99, parseInt(val) || 1));
+  rowQty.set(idx, v);
+  const inp = document.getElementById('rqty-' + idx);
+  if (inp) inp.value = v;
+}
+function changeRowQty(idx, delta) {
+  const current = rowQty.get(idx) || 1;
+  const v = Math.max(1, Math.min(99, current + delta));
+  rowQty.set(idx, v);
+  const inp = document.getElementById('rqty-' + idx);
+  if (inp) inp.value = v;
+}
+
+// ── PREVIEW ──
+function previewLabel(idx) {
+  const item = DATA[idx];
+  const sku = item['SKU'];
+  const label = item['Barcode Lable'];
+  const photo = item['Photo'] || '';
+  document.getElementById('modalTitle').textContent = 'Label Preview';
+  document.getElementById('modalSub').textContent = sku;
+  document.getElementById('prevTop').textContent = sku;
+  document.getElementById('prevBottom').textContent = label;
+
+  const photoWrap = document.getElementById('previewPhotoWrap');
+  if (photo) {
+    photoWrap.innerHTML = `<img class="preview-photo" src="${photo}" alt="${sku}" onerror="this.outerHTML='<div class=&quot;preview-photo-empty&quot;>Photo failed to load</div>'">`;
+  } else {
+    photoWrap.innerHTML = `<div class="preview-photo-empty">No photo for this SKU</div>`;
+  }
+
+  const cont = document.getElementById('prevBarcode');
+  cont.innerHTML='';
+  const svg = makeBarcodeSVG(label, 320, 120);
+  cont.parentNode.replaceChild(svg, cont);
+  svg.id='prevBarcode';
+
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal(e) {
+  if(!e || e.target===document.getElementById('modalOverlay')) {
+    document.getElementById('modalOverlay').classList.remove('open');
+  }
+}
+
+// ── PRINT ──
+function printSelected() {
+  if(selected.size === 0){ alert('Please select at least one item to print.'); return; }
+
+  // Build all label HTML cards using per-row qty
+  let labelsHTML = '';
+  selected.forEach(idx => {
+    const item = DATA[idx];
+    const sku = item['SKU'];
+    const label = item['Barcode Lable'];
+    const qty = rowQty.get(idx) || 1;
+    for(let q = 0; q < qty; q++){
+      labelsHTML += `<div class="label-card"><div class="lbl-top">${sku}</div><svg class="bc" data-val="${label}"></svg><div class="lbl-bottom">${label}</div></div>`;
+    }
+  });
+
+  const printWin = window.open('', '_blank', 'width=800,height=600');
+  printWin.document.write(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Print Labels</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"><\/script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  @page {
+    margin: 0;
+    size: 100mm 53mm;
+  }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #fff;
+  }
+  .label-card {
+    width: 100mm;
+    height: 53mm;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2mm 4mm;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    page-break-after: always;
+    break-after: page;
+    overflow: hidden;
+  }
+  .label-card:last-child {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  .lbl-top {
+    font-size: 18pt;
+    font-weight: 500;
+    text-align: center;
+    margin-bottom: 1mm;
+    line-height: 1.1;
+    width: 100%;
+  }
+  .lbl-bottom {
+    font-size: 17pt;
+    font-weight: 700;
+    text-align: center;
+    margin-top: 1mm;
+    letter-spacing: 0.02em;
+    width: 100%;
+  }
+  svg.bc {
+    width: 94% !important;
+    max-width: 94%;
+    display: block;
+  }
+</style>
+</head>
+<body>
+${labelsHTML}
+<script>
+  document.querySelectorAll('svg.bc').forEach(function(svg){
+    var val = svg.getAttribute('data-val');
+    try {
+      JsBarcode(svg, val, {
+        format: 'CODE128',
+        width: 3,
+        height: 105,
+        displayValue: false,
+        margin: 0,
+        background: '#ffffff',
+        lineColor: '#000000'
+      });
+    } catch(e){}
+  });
+  setTimeout(function(){ window.print(); window.close(); }, 700);
+<\/script>
+</body>
+</html>`);
+  printWin.document.close();
+
+  // Auto-deselect and reset qty after print
+  setTimeout(() => {
+    selected.forEach(idx => rowQty.delete(idx));
+    selected.clear();
+    document.getElementById('selCount').textContent = 0;
+    document.getElementById('headerSel').textContent = 0;
+    const selBar = document.getElementById('selBar');
+    if (selBar) selBar.className = 'sel-bar';
+    syncSelectAllUI();
+    render();
+  }, 800);
+}
+
+// ── THEME ──
+function setTheme(t) {
+  document.body.classList.toggle('light', t === 'light');
+  document.getElementById('btnDark').classList.toggle('active', t !== 'light');
+  document.getElementById('btnLight').classList.toggle('active', t === 'light');
+  localStorage.setItem('bullane_theme', t);
+}
+// restore saved theme
+(function(){ const t = localStorage.getItem('bullane_theme'); if(t) setTheme(t); })();
+
+// ── AUTO LOAD FROM GOOGLE SHEET ON EVERY OPEN ──
+loadFromGoogleSheet();
+
+// init
+render();
+</script>
+</body>
+</html>
