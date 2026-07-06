@@ -669,12 +669,13 @@ function normalizePhotoUrl(url) {
   // Already a direct/usable link
   if (/^https?:\/\//i.test(url) === false) return url; // relative path (e.g. photos/x.jpg) — leave as-is
 
-  // Google Drive "file/d/FILEID/view" or "open?id=FILEID" style links
+  // Google Drive "file/d/FILEID/view" or "open?id=FILEID" or "uc?...id=FILEID" style links
   let m = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
   if (!m) m = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   if (m && url.includes('drive.google.com')) {
     const fileId = m[1];
-    return `https://drive.google.com/uc?export=view&id=${fileId}`;
+    // Thumbnail endpoint embeds far more reliably than uc?export=view
+    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
   }
 
   return url;
