@@ -664,6 +664,7 @@ function normalizePhotoUrl(url) {
   if (!url) return '';
   url = url.trim();
   if (!url) return '';
+  if (/^ERROR:/i.test(url)) return ''; // Apps Script error placeholder, treat as no photo
 
   // Already a direct/usable link
   if (/^https?:\/\//i.test(url) === false) return url; // relative path (e.g. photos/x.jpg) — leave as-is
@@ -712,7 +713,10 @@ async function loadFromGoogleSheet() {
       const cols = parseCsvLine(lines[i]);
       const sku = (cols[0] || '').trim();
       const label = (cols[1] || '').trim();
-      const photoRaw = (cols[2] || '').trim();
+      // Column D = extracted direct link (preferred). Column C = raw/manual link (fallback).
+      const photoD = (cols[3] || '').trim();
+      const photoC = (cols[2] || '').trim();
+      const photoRaw = photoD || photoC;
       if (sku && label) {
         newData.push({ 'SKU': sku, 'Barcode Lable': label, 'Photo': normalizePhotoUrl(photoRaw) });
       }
