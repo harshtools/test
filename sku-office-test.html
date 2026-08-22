@@ -1830,18 +1830,42 @@ function fitOfficeSizePdfLib(font, initialSize, minSize, maxWidth, officeTokens,
   return size;
 }
 
-// Rack tokens are drawn at fixed column offsets (taken from the office row's
-// layout) but with their own font/size — shrink rack size only, offsets stay put.
-function fitRackSizePdfLib(font, initialSize, minSize, maxWidth, rackTokens, offsets) {
+// Rack tokens TRY to line up under the matching office-row column offsets,
+// but a rack code (e.g. "1-E-1") is often much wider than the office code
+// above it (e.g. "20"). If we just reused the office offsets blindly, a wide
+// rack token would run straight into the next one with no gap — the
+// separator gets drawn on top of the next token and everything reads as one
+// garbled string. computeAlignedOffsets() keeps each token's DESIRED
+// position (aligned to the office column) but never lets it start before the
+// previous token + separator has finished, so nothing overlaps — tokens only
+// drift right of their aligned spot when they actually need the room.
+function computeAlignedOffsets(officeOffsets, tokens, sep, measureFn) {
+  const offsets = [];
+  let cursor = 0;
+  const sepWidth = measureFn(sep);
+  tokens.forEach((tok, i) => {
+    const desired = (officeOffsets && officeOffsets[i] !== undefined) ? officeOffsets[i] : cursor;
+    const x = Math.max(desired, cursor);
+    offsets.push(x);
+    const tokW = measureFn(String(tok || ''));
+    cursor = x + tokW;
+    if (i < tokens.length - 1) cursor += sepWidth;
+  });
+  return offsets;
+}
+
+// Shrinks rack font size until the aligned-but-non-overlapping layout fits maxWidth.
+function fitRackSizePdfLib(font, initialSize, minSize, maxWidth, rackTokens, officeOffsets, sep) {
   let size = initialSize;
   while (size > minSize) {
-    let overflow = false;
+    const measureFn = (s) => font.widthOfTextAtSize(s, size);
+    const offs = computeAlignedOffsets(officeOffsets, rackTokens, sep, measureFn);
+    let totalWidth = 0;
     rackTokens.forEach((tok, i) => {
-      if (!tok) return;
-      const w = offsets[i] + font.widthOfTextAtSize(String(tok), size);
-      if (w > maxWidth) overflow = true;
+      const w = offs[i] + measureFn(String(tok || ''));
+      if (w > totalWidth) totalWidth = w;
     });
-    if (!overflow) break;
+    if (totalWidth <= maxWidth) break;
     size--;
   }
   return size;
@@ -2394,16 +2418,18 @@ document.getElementById('processBtn').addEventListener('click', async () => {
         }
       });
 
-      // ── Rack row — independent position/size/font, columns aligned to office offsets ──
+      // ── Rack row — tries to align to office offsets, but never overlaps ──
       const rackMaxWidth = pageW - rackPosX - 8;
-      const rackDrawSize = fitRackSizePdfLib(rackFont, rackFontSize, 5, rackMaxWidth, stampInfo.rackTokens, offsets);
+      const rackDrawSize = fitRackSizePdfLib(rackFont, rackFontSize, 5, rackMaxWidth, stampInfo.rackTokens, offsets, rackSeparator);
+      const rackMeasure = (s) => rackFont.widthOfTextAtSize(s, rackDrawSize);
+      const rackOffsets = computeAlignedOffsets(offsets, stampInfo.rackTokens, rackSeparator, rackMeasure);
 
       stampInfo.rackTokens.forEach((tok, i) => {
         if (!tok) return;
-        page.drawText(tok, { x: rackPosX + offsets[i], y: rackPosY, size: rackDrawSize, font: rackFont, color: rgb(0, 0, 0) });
+        page.drawText(tok, { x: rackPosX + rackOffsets[i], y: rackPosY, size: rackDrawSize, font: rackFont, color: rgb(0, 0, 0) });
         if (i < stampInfo.rackTokens.length - 1) {
           const tokW = rackFont.widthOfTextAtSize(String(tok), rackDrawSize);
-          page.drawText(rackSeparator, { x: rackPosX + offsets[i] + tokW, y: rackPosY, size: rackDrawSize, font: rackFont, color: rgb(0, 0, 0) });
+          page.drawText(rackSeparator, { x: rackPosX + rackOffsets[i] + tokW, y: rackPosY, size: rackDrawSize, font: rackFont, color: rgb(0, 0, 0) });
         }
       });
     }
@@ -2457,19 +2483,22 @@ document.getElementById('processBtn').addEventListener('click', async () => {
           }
         });
 
-        // ── Rack row — independent position/size/font, columns aligned to office offsets ──
+        // ── Rack row — tries to align to office offsets, but never overlaps ──
         const isBoldRack = document.getElementById('rackFontWeight').value === 'bold';
         ctx.font = (isBoldRack ? 'bold ' : '') + `${rackFontSize * drawScale}px Arial`;
         const rackBaseX = rackPosX * drawScale;
         const rackY = rawVp.height - (rackPosY * drawScale);
 
+        const rackMeasureCanvas = (s) => ctx.measureText(s).width;
+        const rackOffsets = computeAlignedOffsets(offsets, stampInfo.rackTokens, rackSeparator, rackMeasureCanvas);
+
         ctx.fillStyle = '#000000';
         stampInfo.rackTokens.forEach((tok, i) => {
           if (!tok) return;
-          ctx.fillText(tok, rackBaseX + offsets[i], rackY);
+          ctx.fillText(tok, rackBaseX + rackOffsets[i], rackY);
           if (i < stampInfo.rackTokens.length - 1) {
             const tokW = ctx.measureText(String(tok)).width;
-            ctx.fillText(rackSeparator, rackBaseX + offsets[i] + tokW, rackY);
+            ctx.fillText(rackSeparator, rackBaseX + rackOffsets[i] + tokW, rackY);
           }
         });
       }
