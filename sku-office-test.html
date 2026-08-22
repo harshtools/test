@@ -1664,6 +1664,32 @@ function freshBytes() {
   return new Uint8Array(pdfArrayBuffer.slice(0));
 }
 
+// ── Rack-wise sort helper ──
+// Rack format: "1-A-1"  =>  Row 1, Bottom "A", Rack 1
+// Sort priority: Row (numeric) → Bottom letter (A,B,C...) → Rack (numeric)
+// Racks that are missing / "-" are always sorted to the end.
+function rackSortKey(rackRaw) {
+  const rack = String(rackRaw || '').trim();
+  if (!rack || rack === '-') return [Infinity, '\uffff', Infinity];
+  const parts = rack.split('-').map(p => p.trim());
+  const rowNum = parseInt(parts[0], 10);
+  const row = isNaN(rowNum) ? Infinity : rowNum;
+  const letter = (parts[1] || '\uffff').toUpperCase();
+  const rackNum = parseInt(parts[2], 10);
+  const num = isNaN(rackNum) ? Infinity : rackNum;
+  return [row, letter, num];
+}
+function compareRackKeys(rawA, rawB) {
+  const a = rackSortKey(rawA), b = rackSortKey(rawB);
+  if (a[0] !== b[0]) return a[0] - b[0];
+  if (a[1] !== b[1]) return a[1] < b[1] ? -1 : (a[1] > b[1] ? 1 : 0);
+  return a[2] - b[2];
+}
+// Sort an array of SKU keys by their rack value, looked up from a skuData map { sku: { qty, rack } }
+function sortSkusByRack(skuKeys, skuData) {
+  return skuKeys.slice().sort((a, b) => compareRackKeys(skuData[a].rack, skuData[b].rack));
+}
+
 // ── SKU Cache (localStorage) ──
 const SKU_KEY = 'je_sku_map', SKU_META = 'je_sku_meta';
 
@@ -2520,7 +2546,7 @@ function renderPicklistPanel(officeMap, panelType) {
     const block = document.createElement('div');
     block.className = 'off-block';
     let rows = '';
-    Object.keys(skus).sort().forEach((sku, si) => {
+    sortSkusByRack(Object.keys(skus), skus).forEach((sku, si) => {
       rows += `<tr><td>${si + 1}</td><td>${sku}</td><td>${skus[sku].rack || '-'}</td><td><span class="qty-tag">${skus[sku].qty}</span></td></tr>`;
     });
     block.innerHTML = `
@@ -2719,7 +2745,7 @@ async function generatePicklistPDF(officeMap,title){
   /* ════ OFFICE BLOCKS ════ */
   offices.forEach(off=>{
     const skuData  = officeMap[off];
-    const skuKeys  = Object.keys(skuData).sort();
+    const skuKeys  = sortSkusByRack(Object.keys(skuData), skuData);
     const n        = skuKeys.length;
     const totalQty = Object.values(skuData).reduce((s,v)=>s+v.qty, 0);
 
