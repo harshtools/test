@@ -1421,7 +1421,10 @@ button, input, select, label, .zoom-btn, .pcard-btn,
         </div>
         <div class="sg2">
           <div class="field"><label>Separator</label><input type="text" id="separator" value=" | " maxlength="10"></div>
-          <div class="ibox" style="margin:0;align-self:end">Multi-SKU: <b style="color:#818cf8">11 | 12 | 15</b><br>Box row stacks below, same separator, blank if missing</div>
+          <div class="field"><label>Box Gap pt</label><input type="number" id="boxGap" value="14" min="4" max="80"></div>
+        </div>
+        <div class="sg2">
+          <div class="ibox" style="margin:0;grid-column:1 / -1">Multi-SKU: <b style="color:#818cf8">26 | 18 | 20 | 20 | 20</b><br>Box row aligns directly under each matching number — increase Box Gap if it overlaps printed label text.</div>
         </div>
 
         <div class="lp-divider" style="margin-top:12px">Not Found</div>
@@ -1760,6 +1763,50 @@ function lookupForSku(sku) {
     if (entry !== undefined && entry !== '' && entry.office) return entry;
   }
   return null;
+}
+
+// ── Token-column alignment helpers (pdf-lib font: has widthOfTextAtSize) ──
+function computeTokenOffsetsPdfLib(tokens, sep, font, size) {
+  const offsets = [];
+  let x = 0;
+  tokens.forEach((tok, i) => {
+    offsets.push(x);
+    x += font.widthOfTextAtSize(String(tok || ''), size);
+    if (i < tokens.length - 1) x += font.widthOfTextAtSize(sep, size);
+  });
+  return offsets;
+}
+
+function fitDrawSizePdfLib(font, initialSize, minSize, maxWidth, officeTokens, boxTokens, sep) {
+  let size = initialSize;
+  while (size > minSize) {
+    const offs = computeTokenOffsetsPdfLib(officeTokens, sep, font, size);
+    let officeWidth = 0, boxWidth = 0;
+    officeTokens.forEach((tok, i) => {
+      const w = offs[i] + font.widthOfTextAtSize(String(tok || ''), size);
+      if (w > officeWidth) officeWidth = w;
+    });
+    boxTokens.forEach((tok, i) => {
+      const w = offs[i] + font.widthOfTextAtSize(String(tok || ''), size);
+      if (w > boxWidth) boxWidth = w;
+    });
+    if (Math.max(officeWidth, boxWidth) <= maxWidth) break;
+    size--;
+  }
+  return size;
+}
+
+// ── Same idea for canvas 2D context (uses ctx.measureText) ──
+function computeTokenOffsetsCanvas(ctx, tokens, sep) {
+  const offsets = [];
+  let x = 0;
+  const sepWidth = ctx.measureText(sep).width;
+  tokens.forEach((tok, i) => {
+    offsets.push(x);
+    x += ctx.measureText(String(tok || '')).width;
+    if (i < tokens.length - 1) x += sepWidth;
+  });
+  return offsets;
 }
 
 
@@ -2123,6 +2170,7 @@ document.getElementById('processBtn').addEventListener('click', async () => {
   const fontSize = parseInt(document.getElementById('fontSize').value) || 8;
   const sep = document.getElementById('separator').value || ' | ';
   const prefix = document.getElementById('prefixText').value.trim();
+  const boxGap = parseInt(document.getElementById('boxGap').value) || 14;
   setProg(5);
   setStatus('PROCESSING', 'run');
   log('Loading PDF document...', 'warn');
@@ -2201,7 +2249,8 @@ document.getElementById('processBtn').addEventListener('click', async () => {
         const match = lookupForSku(item.sku);
         const fallback = getFallback();
         const officeStamp = match ? match.office : fallback;
-        const boxStamp = match && match.box ? match.box : '';
+        const boxRaw = match && match.box ? String(match.box).trim() : '';
+        const boxStamp = boxRaw ? boxRaw : '-';
         for (let q = 0; q < item.qty; q++) {
           officeParts.push(officeStamp);
           boxParts.push(boxStamp);
@@ -2210,7 +2259,7 @@ document.getElementById('processBtn').addEventListener('click', async () => {
           sku: item.sku,
           qty: item.qty,
           office: match ? match.office : null,
-          box: match ? match.box : null,
+          box: boxRaw || null,
           stampValue: officeStamp,
           found: !!match
         };
@@ -2218,13 +2267,13 @@ document.getElementById('processBtn').addEventListener('click', async () => {
 
       const anyFound = itemDetails.some(item => item.found);
       const anyMiss = itemDetails.some(item => !item.found);
+      if (prefix && officeParts.length) officeParts[0] = prefix + officeParts[0];
       const rawOfficeStamp = officeParts.join(sep);
-      const officeStampFinal = prefix ? prefix + rawOfficeStamp : rawOfficeStamp;
-      const boxStampFinal = boxParts.join(sep);
-      const hasBox = boxParts.some(b => b && b.trim());
+      const rawBoxStamp = boxParts.join(sep);
+      const hasBox = boxParts.some(b => b && b !== '-');
       const pageLabel = group.pageIdxs.map(p => p + 1).join('+');
       const itemLabel = itemDetails.map(item => `${item.sku}×${item.qty}`).join(', ');
-      const logStamp = hasBox ? `${officeStampFinal} / ${boxStampFinal}` : officeStampFinal;
+      const logStamp = hasBox ? `${rawOfficeStamp} / ${rawBoxStamp}` : rawOfficeStamp;
 
       if (group.isMulti || group.totalQty > 1) {
         nMulti++;
@@ -2239,8 +2288,8 @@ document.getElementById('processBtn').addEventListener('click', async () => {
 
       group.pageIdxs.forEach(pageIdx => {
         stampMap[pageIdx] = {
-          officeText: officeStampFinal,
-          boxText: boxStampFinal,
+          officeTokens: officeParts.slice(),
+          boxTokens: boxParts.slice(),
           isNF: anyMiss && !anyFound,
           isMulti: group.isMulti || group.totalQty > 1
         };
@@ -2271,27 +2320,32 @@ document.getElementById('processBtn').addEventListener('click', async () => {
       if (pageIdx >= pages2.length) continue;
       const page = pages2[pageIdx];
       const pageW = page.getSize().width;
-      let drawSize = fontSize;
-      while (drawSize > 5 && useFont.widthOfTextAtSize(stampInfo.officeText, drawSize) > pageW - posX - 8) drawSize--;
-      page.drawText(stampInfo.officeText, {
-        x: posX,
-        y: posY,
-        size: drawSize,
-        font: useFont,
-        color: stampInfo.isNF ? rgb(0.85, 0.1, 0.1) : rgb(0, 0, 0)
+      const maxWidth = pageW - posX - 8;
+
+      const drawSize = fitDrawSizePdfLib(useFont, fontSize, 5, maxWidth, stampInfo.officeTokens, stampInfo.boxTokens, sep);
+      const offsets = computeTokenOffsetsPdfLib(stampInfo.officeTokens, sep, useFont, drawSize);
+
+      stampInfo.officeTokens.forEach((tok, i) => {
+        if (!tok) return;
+        page.drawText(tok, {
+          x: posX + offsets[i],
+          y: posY,
+          size: drawSize,
+          font: useFont,
+          color: stampInfo.isNF ? rgb(0.85, 0.1, 0.1) : rgb(0, 0, 0)
+        });
       });
-      if (stampInfo.boxText && stampInfo.boxText.trim()) {
-        let boxSize = drawSize;
-        while (boxSize > 5 && useFont.widthOfTextAtSize(stampInfo.boxText, boxSize) > pageW - posX - 8) boxSize--;
-        const lineGap = drawSize + 3;
-        page.drawText(stampInfo.boxText, {
-          x: posX,
-          y: posY - lineGap,
-          size: boxSize,
+
+      stampInfo.boxTokens.forEach((tok, i) => {
+        if (!tok) return;
+        page.drawText(tok, {
+          x: posX + offsets[i],
+          y: posY - boxGap,
+          size: drawSize,
           font: useFont,
           color: rgb(0, 0, 0)
         });
-      }
+      });
     }
 
     stampedPdfBytes = await pdfDoc.save();
@@ -2323,16 +2377,25 @@ document.getElementById('processBtn').addEventListener('click', async () => {
       await page.render({ canvasContext: ctx, viewport: rawVp }).promise;
 
       const stampInfo = stampMap[pi - 1];
-      if (stampInfo && stampInfo.officeText) {
+      if (stampInfo && stampInfo.officeTokens && stampInfo.officeTokens.length) {
         const drawScale = BASE_SCALE;
         ctx.font = (document.getElementById('fontWeight').value === 'bold' ? 'bold ' : '') + `${fontSize * drawScale}px Arial`;
+        const offsets = computeTokenOffsetsCanvas(ctx, stampInfo.officeTokens, sep);
+        const baseX = posX * drawScale;
+        const officeY = rawVp.height - (posY * drawScale);
+        const boxY = officeY + (boxGap * drawScale);
+
         ctx.fillStyle = stampInfo.isNF ? '#dc2626' : '#000000';
-        ctx.fillText(stampInfo.officeText, posX * drawScale, rawVp.height - (posY * drawScale));
-        if (stampInfo.boxText && stampInfo.boxText.trim()) {
-          const lineGap = (fontSize + 3) * drawScale;
-          ctx.fillStyle = '#000000';
-          ctx.fillText(stampInfo.boxText, posX * drawScale, rawVp.height - (posY * drawScale) + lineGap);
-        }
+        stampInfo.officeTokens.forEach((tok, i) => {
+          if (!tok) return;
+          ctx.fillText(tok, baseX + offsets[i], officeY);
+        });
+
+        ctx.fillStyle = '#000000';
+        stampInfo.boxTokens.forEach((tok, i) => {
+          if (!tok) return;
+          ctx.fillText(tok, baseX + offsets[i], boxY);
+        });
       }
       scroll.appendChild(cv);
       setProg(80 + (pi / totalPages) * 18);
@@ -2377,10 +2440,12 @@ function buildOfficeMap(comboOnly) {
       const sku = sanitizeSku(item.sku);
       const off = item.office || 'Unknown';
       const qty = Math.max(1, parseInt(item.qty, 10) || 1);
+      const box = item.box || null;
       if (!sku) continue;
       if (!map[off]) map[off] = {};
-      if (!map[off][sku]) map[off][sku] = { qty: 0 };
+      if (!map[off][sku]) map[off][sku] = { qty: 0, box: box || '-' };
       map[off][sku].qty += qty;
+      if (box && map[off][sku].box === '-') map[off][sku].box = box;
     }
   }
   return map;
@@ -2405,8 +2470,8 @@ function renderPicklistPanel(officeMap, panelType) {
     const block = document.createElement('div');
     block.className = 'off-block';
     let rows = '';
-    Object.keys(skus).sort().forEach(sku => {
-      rows += `<tr><td>${sku}</td><td><span class="qty-tag">${skus[sku].qty}</span></td></tr>`;
+    Object.keys(skus).sort().forEach((sku, si) => {
+      rows += `<tr><td>${si + 1}</td><td>${sku}</td><td>${skus[sku].box || '-'}</td><td><span class="qty-tag">${skus[sku].qty}</span></td></tr>`;
     });
     block.innerHTML = `
       <div class="off-hdr" style="--c:${col}">
@@ -2414,7 +2479,7 @@ function renderPicklistPanel(officeMap, panelType) {
         <div class="off-hdr-meta">${Object.keys(skus).length} SKU · Qty ${totalQty}</div>
       </div>
       <table class="off-table">
-        <thead><tr><th>SKU Code</th><th>Qty</th></tr></thead>
+        <thead><tr><th>#</th><th>SKU Code</th><th>Box No.</th><th>Qty</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
     grid.appendChild(block);
@@ -2556,6 +2621,7 @@ async function generatePicklistPDF(officeMap,title){
   /* ── column X positions (single-column mode) ── */
   const C_NO  = ML+10;
   const C_SKU = ML+36;
+  const C_BOX = W-MR-112;  // Box No. column starts here
   const C_QTY = W-MR-10;   // right-align qty here
 
   const today   = new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
@@ -2659,6 +2725,7 @@ async function generatePicklistPDF(officeMap,title){
       /* column-header row */
       page.drawText('#',        {x:C_NO,  y:y-CHDR+5, size:7.5, font:FB, color:DG});
       page.drawText('SKU CODE', {x:C_SKU, y:y-CHDR+5, size:7.5, font:FB, color:DG});
+      page.drawText('BOX NO.',  {x:C_BOX, y:y-CHDR+5, size:7.5, font:FB, color:DG});
       page.drawText('QTY',      {x:C_QTY-FR.widthOfTextAtSize('QTY',7.5), y:y-CHDR+5, size:7.5, font:FB, color:DG});
       page.drawLine({start:{x:ML,y:y-CHDR+1}, end:{x:ML+CW,y:y-CHDR+1}, thickness:0.5, color:BRD});
       y -= CHDR;
@@ -2666,8 +2733,11 @@ async function generatePicklistPDF(officeMap,title){
       skuKeys.forEach((sku,si)=>{
         const rowY = y - ROW + 5;
         page.drawText(String(si+1), {x:C_NO,  y:rowY, size:8,  font:FR, color:DG});
-        const sd = sku.length>60 ? sku.slice(0,58)+'..' : sku;
+        const sd = sku.length>44 ? sku.slice(0,42)+'..' : sku;
         page.drawText(sd,           {x:C_SKU, y:rowY, size:9,  font:FR, color:BK});
+        const boxVal = skuData[sku].box || '-';
+        const bd = boxVal.length>16 ? boxVal.slice(0,14)+'..' : boxVal;
+        page.drawText(bd,           {x:C_BOX, y:rowY, size:9,  font:FR, color:BK});
         drawRight(String(skuData[sku].qty), FR, 9, C_QTY, rowY, BK);
         page.drawLine({
           start:{x:ML+1, y:y-ROW+1},
@@ -2702,11 +2772,13 @@ async function generatePicklistPDF(officeMap,title){
       function renderColumn(colX, skus, no0){
         let cy = y;
         const noX  = colX+8;
-        const skuX = colX+30;
+        const skuX = colX+26;
+        const boxX = colX+colW-66;
         const qtyX = colX+colW-8;
 
         page.drawText('#',        {x:noX,  y:cy-CHDR+5, size:7.5, font:FB, color:DG});
         page.drawText('SKU CODE', {x:skuX, y:cy-CHDR+5, size:7.5, font:FB, color:DG});
+        page.drawText('BOX',      {x:boxX, y:cy-CHDR+5, size:7.5, font:FB, color:DG});
         page.drawText('QTY',      {x:qtyX-FR.widthOfTextAtSize('QTY',7.5), y:cy-CHDR+5, size:7.5, font:FB, color:DG});
         page.drawLine({start:{x:colX,y:cy-CHDR+1}, end:{x:colX+colW,y:cy-CHDR+1}, thickness:0.5, color:BRD});
         cy -= CHDR;
@@ -2714,8 +2786,11 @@ async function generatePicklistPDF(officeMap,title){
         skus.forEach((sku,si)=>{
           const rowY = cy - ROW + 5;
           page.drawText(String(no0+si+1), {x:noX,  y:rowY, size:8,  font:FR, color:DG});
-          const sd = sku.length>34 ? sku.slice(0,32)+'..' : sku;
-          page.drawText(sd,               {x:skuX, y:rowY, size:9,  font:FR, color:BK});
+          const sd = sku.length>22 ? sku.slice(0,20)+'..' : sku;
+          page.drawText(sd,               {x:skuX, y:rowY, size:8.5,  font:FR, color:BK});
+          const boxVal = skuData[sku].box || '-';
+          const bd = boxVal.length>10 ? boxVal.slice(0,9)+'..' : boxVal;
+          page.drawText(bd,               {x:boxX, y:rowY, size:8.5,  font:FR, color:BK});
           drawRight(String(skuData[sku].qty), FR, 9, qtyX, rowY, BK);
           page.drawLine({
             start:{x:colX+1, y:cy-ROW+1},
