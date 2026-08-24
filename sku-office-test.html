@@ -1665,25 +1665,25 @@ function freshBytes() {
 }
 
 // ── Rack-wise sort helper ──
-// Rack format: "1-A-1"  =>  Row 1, Bottom "A", Rack 1
-// Sort priority: Row (numeric) → Bottom letter (A,B,C...) → Rack (numeric)
+// Rack format: "1-A-3"  =>  Row 1, Bottom "A", Rack 3
+// Sort priority: Row (numeric) → Rack (numeric) → Bottom letter (A,B,C...)
 // Racks that are missing / "-" are always sorted to the end.
 function rackSortKey(rackRaw) {
   const rack = String(rackRaw || '').trim();
-  if (!rack || rack === '-') return [Infinity, '\uffff', Infinity];
+  if (!rack || rack === '-') return [Infinity, Infinity, '\uffff'];
   const parts = rack.split('-').map(p => p.trim());
   const rowNum = parseInt(parts[0], 10);
   const row = isNaN(rowNum) ? Infinity : rowNum;
   const letter = (parts[1] || '\uffff').toUpperCase();
   const rackNum = parseInt(parts[2], 10);
   const num = isNaN(rackNum) ? Infinity : rackNum;
-  return [row, letter, num];
+  return [row, num, letter];
 }
 function compareRackKeys(rawA, rawB) {
   const a = rackSortKey(rawA), b = rackSortKey(rawB);
   if (a[0] !== b[0]) return a[0] - b[0];
-  if (a[1] !== b[1]) return a[1] < b[1] ? -1 : (a[1] > b[1] ? 1 : 0);
-  return a[2] - b[2];
+  if (a[1] !== b[1]) return a[1] - b[1];
+  return a[2] < b[2] ? -1 : (a[2] > b[2] ? 1 : 0);
 }
 // Sort an array of SKU keys by their rack value, looked up from a skuData map { sku: { qty, rack } }
 function sortSkusByRack(skuKeys, skuData) {
