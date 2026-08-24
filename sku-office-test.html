@@ -1686,8 +1686,15 @@ function compareRackKeys(rawA, rawB) {
   return a[2] < b[2] ? -1 : (a[2] > b[2] ? 1 : 0);
 }
 // Sort an array of SKU keys by their rack value, looked up from a skuData map { sku: { qty, rack } }
+// Sort an array of SKU keys by their rack value, looked up from a skuData map { sku: { qty, rack } }.
+// When two SKUs have the same rack sort-key (most commonly: both have no rack at all),
+// fall back to sorting by SKU code alphabetically instead of leaving them in insertion order.
 function sortSkusByRack(skuKeys, skuData) {
-  return skuKeys.slice().sort((a, b) => compareRackKeys(skuData[a].rack, skuData[b].rack));
+  return skuKeys.slice().sort((a, b) => {
+    const rackCmp = compareRackKeys(skuData[a].rack, skuData[b].rack);
+    if (rackCmp !== 0) return rackCmp;
+    return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+  });
 }
 
 // ── SKU Cache (localStorage) ──
