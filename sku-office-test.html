@@ -1665,18 +1665,18 @@ function freshBytes() {
 }
 
 // ── Rack-wise sort helper ──
-// Rack format: "1-A-3"  =>  Row 1, Bottom "A", Rack 3
+// Rack format: "3-A-1"  =>  Rack 3, Bottom "A", Row 1
 // Sort priority: Row (numeric) → Rack (numeric) → Bottom letter (A,B,C...)
 // Racks that are missing / "-" are always sorted to the end.
 function rackSortKey(rackRaw) {
   const rack = String(rackRaw || '').trim();
   if (!rack || rack === '-') return [Infinity, Infinity, '\uffff'];
   const parts = rack.split('-').map(p => p.trim());
-  const rowNum = parseInt(parts[0], 10);
-  const row = isNaN(rowNum) ? Infinity : rowNum;
+  const rackNumRaw = parseInt(parts[0], 10);
+  const num = isNaN(rackNumRaw) ? Infinity : rackNumRaw;
   const letter = (parts[1] || '\uffff').toUpperCase();
-  const rackNum = parseInt(parts[2], 10);
-  const num = isNaN(rackNum) ? Infinity : rackNum;
+  const rowNumRaw = parseInt(parts[2], 10);
+  const row = isNaN(rowNumRaw) ? Infinity : rowNumRaw;
   return [row, num, letter];
 }
 function compareRackKeys(rawA, rawB) {
