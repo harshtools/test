@@ -720,15 +720,15 @@ async function loadFromGoogleSheet() {
     for (let i = 1; i < lines.length; i++) {
       if (!lines[i].trim()) continue;
       const cols = parseCsvLine(lines[i]);
-      const sku = (cols[0] || '').trim();
-      const label = (cols[1] || '').trim();
-      // Column D = Drive photo link (this sheet already has photos here). Column C = fallback.
-      const photoD = (cols[3] || '').trim();
-      const photoC = (cols[2] || '').trim();
-      const photoRaw = photoD || photoC;
-      if (sku && label) {
-        newData.push({ 'SKU': sku, 'Barcode Lable': label, 'Photo': normalizePhotoUrl(photoRaw) });
-      }
+     const sku = (cols[0] || '').trim();
+const label = (cols[1] || '').trim();
+// Column D = Drive photo link (this sheet already has photos here). Column C = fallback.
+const photoD = (cols[3] || '').trim();
+const photoC = (cols[2] || '').trim();
+const photoRaw = photoD || photoC;
+if (label) {
+  newData.push({ 'SKU': sku || label, 'Barcode Lable': label, 'Photo': normalizePhotoUrl(photoRaw) });
+}
     }
     if (newData.length > 0) {
       DATA.splice(0, DATA.length, ...newData);
