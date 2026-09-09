@@ -1483,15 +1483,18 @@ document.getElementById('processBtn').addEventListener('click', async () => {
     // STAMP FORMAT: one token PER UNIT (qty expanded), not deduped, in item
     // order → e.g. office line "26 | 18 | 20 | 20 | 20", rack line aligned
     // underneath: "- | - | 1-E-1 | 1-D-1 | 1-C-3"
+    // Only pages that THEMSELVES contain a parsed SKU/item get stamped —
+    // e.g. a Shiprocket shipping-address page with no item table is left
+    // untouched even though it belongs to the same order as an invoice page
+    // that does have items.
     // This is independent of picklist — picklist uses raw qty numbers
     log('Matching SKUs to office + rack numbers...','warn');
     const stampMap = {};
     let nMatched=0, nMulti=0, nNotFound=0;
 
-    groups.forEach((group, gi)=>{
-      const officeTokens = [];
-      const rackTokens   = [];
-      const itemDetails = group.items.map(item=>{
+    function buildTokensForItems(items){
+      const officeTokens = [], rackTokens = [];
+      const details = items.map(item=>{
         const skuData = lookupSkuData(item.sku);
         const office  = skuData ? skuData.office : null;
         const rack    = skuData ? skuData.rack : '-';
@@ -1502,20 +1505,33 @@ document.getElementById('processBtn').addEventListener('click', async () => {
         for (let u=0; u<qty; u++){ officeTokens.push(officeTok); rackTokens.push(rackTok); }
         return {sku:item.sku, qty, office:office||null, rack: rack||'-', found:!!office};
       });
+      return {officeTokens, rackTokens, details};
+    }
 
-      const officeLine = (prefix ? prefix : '') + officeTokens.join(sep);
-      const rackLine    = (prefixRack ? prefixRack : '') + rackTokens.join(sepRack);
+    groups.forEach((group, gi)=>{
+      // Aggregated across the whole order — used for the order-level log line and allOrderData/picklist
+      const {details: itemDetails} = buildTokensForItems(group.items);
       const anyFound  = itemDetails.some(it=>it.found);
       const anyMiss   = itemDetails.some(it=>!it.found);
       const pageLabel = group.pageIdxs.map(p=>p+1).join('+');
       const itemLabel = itemDetails.map(it=>`${it.sku}×${it.qty}`).join(', ');
+      const summaryLine = itemDetails.map(it=>it.office||getFallback()).join(sep);
 
-      if (group.isMulti){nMulti++;log(`Order ${group.orderNo} · pages ${pageLabel} → ${itemLabel} → ${officeLine}`,'multi');}
-      else if (anyFound){nMatched++;log(`Order ${group.orderNo} · page ${pageLabel} → ${officeLine}`,'ok');}
+      if (group.isMulti){nMulti++;log(`Order ${group.orderNo} · pages ${pageLabel} → ${itemLabel} → ${summaryLine}`,'multi');}
+      else if (anyFound){nMatched++;log(`Order ${group.orderNo} · page ${pageLabel} → ${summaryLine}`,'ok');}
       else{nNotFound++;log(`Order ${group.orderNo} · page ${pageLabel} — not found: ${itemLabel}`,'err');}
 
+      // Per-page stamping — only pages that themselves contain a parsed item
       group.pageIdxs.forEach(pageIdx=>{
-        stampMap[pageIdx]={officeTokens, rackTokens, officeLine, rackLine, isNF:anyMiss&&!anyFound, isMulti:group.isMulti};
+        const pageItems = (rawPages[pageIdx] && rawPages[pageIdx].items) || [];
+        if (!pageItems.length) return;   // no SKU on this specific page — leave unstamped
+
+        const {officeTokens, rackTokens, details:pageDetails} = buildTokensForItems(pageItems);
+        const officeLine = (prefix ? prefix : '') + officeTokens.join(sep);
+        const rackLine    = (prefixRack ? prefixRack : '') + rackTokens.join(sepRack);
+        const pageAnyFound = pageDetails.some(it=>it.found);
+        const pageAnyMiss  = pageDetails.some(it=>!it.found);
+        stampMap[pageIdx]={officeTokens, rackTokens, officeLine, rackLine, isNF:pageAnyMiss&&!pageAnyFound, isMulti:pageDetails.length>1};
       });
 
       // ── allOrderData: built from ACTUAL PARSED QTY, independent of stamp ──
@@ -1564,7 +1580,7 @@ document.getElementById('processBtn').addEventListener('click', async () => {
       let baseXOffice = posX + (prefix ? officeFont.widthOfTextAtSize(prefix,ods) : 0);
       let baseXRack   = posXRack + (prefixRack ? rackFont.widthOfTextAtSize(prefixRack,rds) : 0);
       if (prefix) pg.drawText(prefix, {x:posX, y:posY, size:ods, font:officeFont, color: sInfo.isNF ? rgb(0.85,0.1,0.1) : rgb(0,0,0)});
-      if (prefixRack) pg.drawText(prefixRack, {x:posXRack, y:posYRack, size:rds, font:rackFont, color: rgb(0.35,0.2,0.55)});
+      if (prefixRack) pg.drawText(prefixRack, {x:posXRack, y:posYRack, size:rds, font:rackFont, color: rgb(0,0,0)});
 
       cols.forEach((col, ci)=>{
         if (col.officeText) pg.drawText(col.officeText, {
@@ -1573,7 +1589,7 @@ document.getElementById('processBtn').addEventListener('click', async () => {
         });
         if (col.rackText) pg.drawText(col.rackText, {
           x: baseXRack+col.x, y:posYRack, size:rds, font:rackFont,
-          color: rgb(0.35,0.2,0.55)
+          color: rgb(0,0,0)
         });
       });
     }
@@ -1609,7 +1625,7 @@ document.getElementById('processBtn').addEventListener('click', async () => {
         }
         if (sInfo.rackLine){
           ctx.font=(rackWeightBold?'bold ':'')+`${fontSizeRack*BASE_SCALE}px Arial`;
-          ctx.fillStyle='#5a3390';
+          ctx.fillStyle='#000000';
           ctx.fillText(sInfo.rackLine, posXRack*BASE_SCALE, rvp.height-(posYRack*BASE_SCALE));
         }
       }
