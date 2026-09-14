@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Bullane Inventory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#10141A;
+    --surface:#181D25;
+    --surface-2:#1F2530;
+    --border:#2A313C;
+    --text:#EAEDF1;
+    --muted:#8A93A3;
+    --in:#33B57A;
+    --in-dim:#1D3A2C;
+    --out:#E15C4F;
+    --out-dim:#3C2320;
+    --rto:#E0A23E;
+    --rto-dim:#3A2E17;
+    --stock:#4C9FE0;
+    --stock-dim:#1B2E3D;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;overscroll-behavior:none;}
+  body{display:flex;flex-direction:column;min-height:100vh;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .display{font-family:'Space Grotesk',sans-serif;}
+
+  header.topbar{
+    padding:18px 20px 14px;
+    display:flex;align-items:center;justify-content:space-between;
+    border-bottom:1px solid var(--border);
+    position:sticky;top:0;background:var(--bg);z-index:20;
+  }
+  header.topbar .brand{display:flex;flex-direction:column;gap:2px;}
+  header.topbar .brand .name{font-family:'Space Grotesk';font-weight:700;font-size:19px;letter-spacing:-0.02em;}
+  header.topbar .brand .sub{font-size:12px;color:var(--muted);}
+  .conn-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .2s;}
+  .conn-dot.live{background:var(--in);}
+  .conn-wrap{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);}
+
+  main{flex:1;overflow-y:auto;padding:18px 16px 100px;max-width:640px;margin:0 auto;width:100%;}
+  .view{display:none;}
+  .view.active{display:block;animation:fade .18s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+
+  .action-badge{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:6px 12px;border-radius:100px;font-size:13px;font-weight:600;
+    margin-bottom:16px;
+  }
+  .action-badge .dot{width:7px;height:7px;border-radius:50%;}
+  .badge-out{background:var(--out-dim);color:var(--out);}
+  .badge-out .dot{background:var(--out);}
+  .badge-in{background:var(--in-dim);color:var(--in);}
+  .badge-in .dot{background:var(--in);}
+  .badge-rto{background:var(--rto-dim);color:var(--rto);}
+  .badge-rto .dot{background:var(--rto);}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px;}
+
+  label.field-label{display:block;font-size:12px;color:var(--muted);margin-bottom:7px;font-weight:500;}
+
+  .sku-input-row{position:relative;display:flex;gap:8px;margin-bottom:14px;}
+  input.sku-input{
+    flex:1;background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+    padding:14px 14px;border-radius:10px;font-size:16px;font-family:'IBM Plex Mono',monospace;
+    outline:none;
+  }
+  input.sku-input:focus{border-color:var(--stock);}
+  button.scan-btn{
+    width:52px;flex-shrink:0;border-radius:10px;border:1px solid var(--border);
+    background:var(--surface-2);color:var(--text);display:flex;align-items:center;justify-content:center;
+  }
+  button.scan-btn:active{background:var(--border);}
+
+  .sku-suggestions{
+    position:absolute;top:56px;left:0;right:60px;background:var(--surface-2);
+    border:1px solid var(--border);border-radius:10px;max-height:220px;overflow-y:auto;z-index:30;
+    box-shadow:0 10px 30px rgba(0,0,0,.4);
+  }
+  .sku-suggestions div{padding:11px 14px;font-size:14px;border-bottom:1px solid var(--border);cursor:pointer;}
+  .sku-suggestions div:last-child{border-bottom:none;}
+  .sku-suggestions div:active{background:var(--border);}
+  .sku-suggestions .s-code{font-family:'IBM Plex Mono';font-weight:600;color:var(--text);}
+  .sku-suggestions .s-name{color:var(--muted);font-size:12px;margin-top:2px;}
+
+  .sku-confirmed{
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--surface-2);border:1px solid var(--border);border-radius:10px;
+    padding:12px 14px;margin-bottom:14px;
+  }
+  .sku-confirmed .code{font-family:'IBM Plex Mono';font-weight:600;font-size:15px;}
+  .sku-confirmed .nm{color:var(--muted);font-size:12px;margin-top:2px;}
+  .sku-confirmed button{background:none;border:none;color:var(--muted);font-size:13px;padding:4px;}
+
+  .qty-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+  .qty-btn{
+    width:48px;height:48px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);
+    color:var(--text);font-size:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .qty-btn:active{background:var(--border);}
+  input.qty-input{
+    flex:1;text-align:center;background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+    padding:12px;border-radius:10px;font-size:20px;font-family:'Space Grotesk';font-weight:600;outline:none;
+  }
+
+  input.date-input{
+    width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+    padding:13px 14px;border-radius:10px;font-size:15px;outline:none;margin-bottom:16px;
+    font-family:'Inter';color-scheme:dark;
+  }
+
+  button.save-btn{
+    width:100%;padding:16px;border:none;border-radius:12px;font-size:16px;font-weight:700;
+    font-family:'Space Grotesk';color:#0B0E12;cursor:pointer;
+  }
+  button.save-btn:active{transform:scale(0.98);}
+  button.save-btn.disabled{opacity:.4;pointer-events:none;}
+  .save-out{background:var(--out);}
+  .save-in{background:var(--in);}
+  .save-rto{background:var(--rto);}
+
+  .section-title{font-size:12px;color:var(--muted);text-transform:none;margin:22px 0 10px;font-weight:600;display:flex;justify-content:space-between;align-items:center;}
+
+  .entry-row{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;
+  }
+  .entry-row .left .code{font-family:'IBM Plex Mono';font-weight:600;font-size:14px;}
+  .entry-row .left .dt{color:var(--muted);font-size:11px;margin-top:3px;}
+  .entry-row .right{display:flex;align-items:center;gap:10px;}
+  .entry-row .qty{font-family:'Space Grotesk';font-weight:700;font-size:16px;}
+  .entry-row button.del{background:none;border:none;color:var(--muted);font-size:16px;padding:4px 6px;}
+
+  .empty-state{text-align:center;padding:30px 10px;color:var(--muted);font-size:13px;}
+
+  /* Stock view */
+  .stock-search{
+    width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+    padding:13px 14px;border-radius:10px;font-size:15px;outline:none;margin-bottom:14px;
+  }
+  .stock-summary{display:flex;gap:10px;margin-bottom:16px;}
+  .sum-card{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;}
+  .sum-card .n{font-family:'Space Grotesk';font-weight:700;font-size:20px;}
+  .sum-card .l{font-size:10px;color:var(--muted);margin-top:3px;}
+
+  .stock-row{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:13px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;
+  }
+  .stock-row .code{font-family:'IBM Plex Mono';font-weight:600;font-size:14px;}
+  .stock-row .nm{color:var(--muted);font-size:11px;margin-top:3px;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .stock-row .qty-box{text-align:right;}
+  .stock-row .qty-box .n{font-family:'Space Grotesk';font-weight:700;font-size:19px;}
+  .stock-row .qty-box .n.zero{color:var(--out);}
+  .stock-row .breakdown{font-size:10px;color:var(--muted);margin-top:2px;}
+
+  nav.bottombar{
+    position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);
+    display:flex;padding:6px 8px calc(6px + env(safe-area-inset-bottom));z-index:20;
+  }
+  nav.bottombar button{
+    flex:1;background:none;border:none;color:var(--muted);display:flex;flex-direction:column;
+    align-items:center;gap:4px;padding:8px 4px;border-radius:10px;font-size:11px;font-weight:600;font-family:'Inter';
+  }
+  nav.bottombar button.active{color:var(--text);background:var(--surface-2);}
+  nav.bottombar button .ic{width:20px;height:20px;}
+  nav.bottombar button.active.tab-out{color:var(--out);}
+  nav.bottombar button.active.tab-in{color:var(--in);}
+  nav.bottombar button.active.tab-rto{color:var(--rto);}
+  nav.bottombar button.active.tab-stock{color:var(--stock);}
+
+  /* Scanner modal */
+  .modal-backdrop{
+    position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;display:none;
+    align-items:flex-end;justify-content:center;
+  }
+  .modal-backdrop.show{display:flex;}
+  .modal-sheet{
+    width:100%;max-width:640px;background:var(--surface);border-radius:20px 20px 0 0;padding:18px;
+    border-top:1px solid var(--border);
+  }
+  .modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+  .modal-head h3{margin:0;font-family:'Space Grotesk';font-size:16px;}
+  .modal-head button{background:var(--surface-2);border:none;color:var(--text);width:32px;height:32px;border-radius:50%;font-size:16px;}
+  #reader{width:100%;border-radius:12px;overflow:hidden;background:#000;}
+  .scan-hint{text-align:center;color:var(--muted);font-size:12px;margin-top:10px;}
+
+  .toast{
+    position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+    padding:12px 20px;border-radius:100px;font-size:13px;font-weight:600;z-index:200;
+    opacity:0;transition:all .25s ease;pointer-events:none;display:flex;align-items:center;gap:8px;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .toast .tdot{width:8px;height:8px;border-radius:50%;}
+
+  ::-webkit-scrollbar{width:0;height:0;}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="name">Bullane Inventory</div>
+    <div class="sub">Live stock system</div>
+  </div>
+  <div class="conn-wrap">
+    <div class="conn-dot" id="connDot"></div>
+    <span id="connText">connecting…</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- OUT VIEW -->
+  <section class="view active" id="view-out">
+    <span class="action-badge badge-out"><span class="dot"></span>DISPATCH OUT</span>
+    <div class="card">
+      <label class="field-label">Scan or search SKU</label>
+      <div class="sku-input-row">
+        <input type="text" class="sku-input" id="out-sku-input" placeholder="e.g. 01SM-M" autocomplete="off">
+        <button class="scan-btn" onclick="openScanner('out')">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+        </button>
+        <div class="sku-suggestions" id="out-suggestions" style="display:none;"></div>
+      </div>
+      <div id="out-confirmed"></div>
+
+      <label class="field-label">Quantity</label>
+      <div class="qty-row">
+        <button class="qty-btn" onclick="stepQty('out',-1)">−</button>
+        <input type="number" class="qty-input" id="out-qty" value="1" min="1">
+        <button class="qty-btn" onclick="stepQty('out',1)">+</button>
+      </div>
+
+      <label class="field-label">Date</label>
+      <input type="date" class="date-input" id="out-date">
+
+      <button class="save-btn save-out disabled" id="out-save" onclick="saveEntry('out')">Save dispatch</button>
+    </div>
+
+    <div class="section-title">Recent dispatches</div>
+    <div id="out-recent"><div class="empty-state">No entries yet</div></div>
+  </section>
+
+  <!-- IN VIEW -->
+  <section class="view" id="view-in">
+    <span class="action-badge badge-in"><span class="dot"></span>STOCK IN</span>
+    <div class="card">
+      <label class="field-label">Scan or search SKU</label>
+      <div class="sku-input-row">
+        <input type="text" class="sku-input" id="in-sku-input" placeholder="e.g. 01SM-M" autocomplete="off">
+        <button class="scan-btn" onclick="openScanner('in')">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+        </button>
+        <div class="sku-suggestions" id="in-suggestions" style="display:none;"></div>
+      </div>
+      <div id="in-confirmed"></div>
+
+      <label class="field-label">Quantity</label>
+      <div class="qty-row">
+        <button class="qty-btn" onclick="stepQty('in',-1)">−</button>
+        <input type="number" class="qty-input" id="in-qty" value="1" min="1">
+        <button class="qty-btn" onclick="stepQty('in',1)">+</button>
+      </div>
+
+      <label class="field-label">Date</label>
+      <input type="date" class="date-input" id="in-date">
+
+      <button class="save-btn save-in disabled" id="in-save" onclick="saveEntry('in')">Save stock in</button>
+    </div>
+
+    <div class="section-title">Recent stock-ins</div>
+    <div id="in-recent"><div class="empty-state">No entries yet</div></div>
+  </section>
+
+  <!-- RTO VIEW -->
+  <section class="view" id="view-rto">
+    <span class="action-badge badge-rto"><span class="dot"></span>RTO RECEIVED</span>
+    <div class="card">
+      <label class="field-label">Scan or search SKU</label>
+      <div class="sku-input-row">
+        <input type="text" class="sku-input" id="rto-sku-input" placeholder="e.g. 01SM-M" autocomplete="off">
+        <button class="scan-btn" onclick="openScanner('rto')">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+        </button>
+        <div class="sku-suggestions" id="rto-suggestions" style="display:none;"></div>
+      </div>
+      <div id="rto-confirmed"></div>
+
+      <label class="field-label">Quantity</label>
+      <div class="qty-row">
+        <button class="qty-btn" onclick="stepQty('rto',-1)">−</button>
+        <input type="number" class="qty-input" id="rto-qty" value="1" min="1">
+        <button class="qty-btn" onclick="stepQty('rto',1)">+</button>
+      </div>
+
+      <label class="field-label">Date</label>
+      <input type="date" class="date-input" id="rto-date">
+
+      <button class="save-btn save-rto disabled" id="rto-save" onclick="saveEntry('rto')">Save RTO</button>
+    </div>
+
+    <div class="section-title">Recent RTOs</div>
+    <div id="rto-recent"><div class="empty-state">No entries yet</div></div>
+  </section>
+
+  <!-- STOCK VIEW -->
+  <section class="view" id="view-stock">
+    <span class="action-badge" style="background:var(--stock-dim);color:var(--stock);"><span class="dot" style="background:var(--stock);"></span>LIVE STOCK</span>
+
+    <div class="stock-summary">
+      <div class="sum-card"><div class="n" id="sum-skus">–</div><div class="l">SKUs tracked</div></div>
+      <div class="sum-card"><div class="n" id="sum-units">–</div><div class="l">Units in stock</div></div>
+      <div class="sum-card"><div class="n" id="sum-zero">–</div><div class="l">Out of stock</div></div>
+    </div>
+
+    <input type="text" class="stock-search" id="stock-search" placeholder="Search SKU or item name…">
+    <button class="scan-btn" style="width:100%;display:flex;gap:8px;font-size:13px;font-weight:600;color:var(--stock);border-color:var(--stock-dim);margin-bottom:14px;" onclick="openBulkAdd()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      Bulk add SKUs
+    </button>
+    <div id="stock-list"><div class="empty-state">Loading stock…</div></div>
+  </section>
+
+</main>
+
+<nav class="bottombar">
+  <button class="active tab-out" data-view="out" onclick="switchView('out')">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+    OUT
+  </button>
+  <button class="tab-in" data-view="in" onclick="switchView('in')">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+    IN
+  </button>
+  <button class="tab-rto" data-view="rto" onclick="switchView('rto')">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+    RTO
+  </button>
+  <button class="tab-stock" data-view="stock" onclick="switchView('stock')">
+    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="10" width="4" height="10"/><rect x="10" y="6" width="4" height="14"/><rect x="17" y="13" width="4" height="7"/></svg>
+    STOCK
+  </button>
+</nav>
+
+<div class="modal-backdrop" id="scanModal">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <h3>Scan barcode</h3>
+      <button onclick="closeScanner()">✕</button>
+    </div>
+    <div id="reader"></div>
+    <div class="scan-hint">Point camera at the SKU barcode</div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="bulkAddModal">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <h3>Bulk add SKUs</h3>
+      <button onclick="closeBulkAdd()">✕</button>
+    </div>
+    <label class="field-label">One SKU per line — format: <span class="mono">SKU, Item Name</span></label>
+    <textarea id="bulk-text" rows="8" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:12px 14px;font-size:14px;font-family:'IBM Plex Mono',monospace;margin-bottom:10px;resize:vertical;" placeholder="113SM-S, 113SM_MC_PCBeige-S
+113SM-M, 113SM_MC_PCBeige-M
+113SM-L, 113SM_MC_PCBeige-L"></textarea>
+    <div id="bulk-preview" style="font-size:12px;color:var(--muted);margin-bottom:14px;">Paste your list above</div>
+    <button class="save-btn" style="background:var(--stock);color:#0B0E12;" id="bulk-submit-btn" onclick="submitBulkAdd()">Add SKUs</button>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="addSkuModal">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <h3>Add new SKU</h3>
+      <button onclick="closeAddSku()">✕</button>
+    </div>
+    <label class="field-label">SKU code</label>
+    <input type="text" class="sku-input" id="addsku-code" style="width:100%;margin-bottom:14px;" placeholder="e.g. 113SM-S">
+    <label class="field-label">Item name</label>
+    <input type="text" class="date-input" id="addsku-name" placeholder="e.g. 113SM_MC_PCBeige-S" style="margin-bottom:18px;">
+    <button class="save-btn" style="background:var(--stock);color:#0B0E12;" onclick="submitAddSku()">Add SKU</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span class="tdot"></span><span id="toastMsg"></span></div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import {
+  getFirestore, collection, doc, addDoc, setDoc, deleteDoc,
+  onSnapshot, query, orderBy, limit, increment, serverTimestamp, getDoc, writeBatch
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+// ---- Firebase config ----
+const firebaseConfig = {
+  apiKey: "AIzaSyCoY4WRqv5IKOf0nrUK2a3QKlY-hwZJbRo",
+  authDomain: "bullane-inventory.firebaseapp.com",
+  projectId: "bullane-inventory",
+  storageBucket: "bullane-inventory.firebasestorage.app",
+  messagingSenderId: "93673316527",
+  appId: "1:93673316527:web:7fbfc782b72232d772b45a"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// ---- SKU master list (embedded, from Dropdown sheet) ----
+const SKU_LIST = [{"sku":"01SM-S","name":"01SM_BD_PLBlack-S"},{"sku":"01SM-M","name":"01SM_BD_PLBlack-M"},{"sku":"01SM-L","name":"01SM_BD_PLBlack-L"},{"sku":"01SM-XL","name":"01SM_BD_PLBlack-XL"},{"sku":"02SM-S","name":"02SM_BD_PLSilver-S"},{"sku":"02SM-M","name":"02SM_BD_PLSilver-M"},{"sku":"02SM-L","name":"02SM_BD_PLSilver-L"},{"sku":"02SM-XL","name":"02SM_BD_PLSilver-XL"},{"sku":"03SM-S","name":"03SM_BD_PLYellow-S"},{"sku":"03SM-M","name":"03SM_BD_PLYellow-M"},{"sku":"03SM-L","name":"03SM_BD_PLYellow-L"},{"sku":"03SM-XL","name":"03SM_BD_PLYellow-XL"},{"sku":"04SM-S","name":"04SM_BD_PLOrange-S"},{"sku":"04SM-M","name":"04SM_BD_PLOrange-M"},{"sku":"04SM-L","name":"04SM_BD_PLOrange-L"},{"sku":"04SM-XL","name":"04SM_BD_PLOrange-XL"},{"sku":"05SM-S","name":"05SM_BD_PLPink-S"},{"sku":"05SM-M","name":"05SM_BD_PLPink-M"},{"sku":"05SM-L","name":"05SM_BD_PLPink-L"},{"sku":"05SM-XL","name":"05SM_BD_PLPink-XL"},{"sku":"06SM-S","name":"06SM_BD_PLGreen-S"},{"sku":"06SM-M","name":"06SM_BD_PLGreen-M"},{"sku":"06SM-L","name":"06SM_BD_PLGreen-L"},{"sku":"06SM-XL","name":"06SM_BD_PLGreen-XL"},{"sku":"07SM-S","name":"07SM_SCBrown-S"},{"sku":"07SM-M","name":"07SM_SCBrown-M"},{"sku":"07SM-L","name":"07SM_SCBrown-L"},{"sku":"07SM-XL","name":"07SM_SCBrown-XL"},{"sku":"08SM-S","name":"08SM_SCBlue-S"},{"sku":"08SM-M","name":"08SM_SCBlue-M"},{"sku":"08SM-L","name":"08SM_SCBlue-L"},{"sku":"08SM-XL","name":"08SM_SCBlue-XL"},{"sku":"09SM-S","name":"09SM_SCSky-S"},{"sku":"09SM-M","name":"09SM_SCSky-M"},{"sku":"09SM-L","name":"09SM_SCSky-L"},{"sku":"09SM-XL","name":"09SM_SCSky-XL"},{"sku":"10SM-S","name":"10SM_SCYellow-S"},{"sku":"10SM-M","name":"10SM_SCYellow-M"},{"sku":"10SM-L","name":"10SM_SCYellow-L"},{"sku":"10SM-XL","name":"10SM_SCYellow-XL"},{"sku":"11SM-S","name":"11SM_BD_SLGreen-S"},{"sku":"11SM-M","name":"11SM_BD_SLGreen-M"},{"sku":"11SM-L","name":"11SM_BD_SLGreen-L"},{"sku":"11SM-XL","name":"11SM_BD_SLGreen-XL"},{"sku":"12SM-S","name":"12SM_BD_SLYellow-S"},{"sku":"12SM-M","name":"12SM_BD_SLYellow-M"},{"sku":"12SM-L","name":"12SM_BD_SLYellow-L"},{"sku":"12SM-XL","name":"12SM_BD_SLYellow-XL"},{"sku":"13SM-S","name":"13SM_BD_SCNavy-S"},{"sku":"13SM-M","name":"13SM_BD_SCNavy-M"},{"sku":"13SM-L","name":"13SM_BD_SCNavy-L"},{"sku":"13SM-XL","name":"13SM_BD_SCNavy-XL"},{"sku":"14SM-S","name":"14SM_PCWhite-S"},{"sku":"14SM-M","name":"14SM_PCWhite-M"},{"sku":"14SM-L","name":"14SM_PCWhite-L"},{"sku":"14SM-XL","name":"14SM_PCWhite-XL"},{"sku":"15SM-S","name":"15SM_PCBlack-S"},{"sku":"15SM-M","name":"15SM_PCBlack-M"},{"sku":"15SM-L","name":"15SM_PCBlack-L"},{"sku":"15SM-XL","name":"15SM_PCBlack-XL"},{"sku":"16SM-S","name":"16SM_PCSilver-S"},{"sku":"16SM-M","name":"16SM_PCSilver-M"},{"sku":"16SM-L","name":"16SM_PCSilver-L"},{"sku":"16SM-XL","name":"16SM_PCSilver-XL"},{"sku":"17SM-S","name":"17SM_PCNavy-S"},{"sku":"17SM-M","name":"17SM_PCNavy-M"},{"sku":"17SM-L","name":"17SM_PCNavy-L"},{"sku":"17SM-XL","name":"17SM_PCNavy-XL"},{"sku":"18SM-S","name":"18SM_PCGrey-S"},{"sku":"18SM-M","name":"18SM_PCGrey-M"},{"sku":"18SM-L","name":"18SM_PCGrey-L"},{"sku":"18SM-XL","name":"18SM_PCGrey-XL"},{"sku":"19SM-S","name":"19SM_PCTeal-S"},{"sku":"19SM-M","name":"19SM_PCTeal-M"},{"sku":"19SM-L","name":"19SM_PCTeal-L"},{"sku":"19SM-XL","name":"19SM_PCTeal-XL"},{"sku":"20SM-S","name":"20SM_PCOlive-S"},{"sku":"20SM-M","name":"20SM_PCOlive-M"},{"sku":"20SM-L","name":"20SM_PCOlive-L"},{"sku":"20SM-XL","name":"20SM_PCOlive-XL"},{"sku":"21SM-S","name":"21SM_PCSky-S"},{"sku":"21SM-M","name":"21SM_PCSky-M"},{"sku":"21SM-L","name":"21SM_PCSky-L"},{"sku":"21SM-XL","name":"21SM_PCSky-XL"},{"sku":"22SM-S","name":"22SM_PCPink-S"},{"sku":"22SM-M","name":"22SM_PCPink-M"},{"sku":"22SM-L","name":"22SM_PCPink-L"},{"sku":"22SM-XL","name":"22SM_PCPink-XL"},{"sku":"23SM-S","name":"23SM_PCYellow-S"},{"sku":"23SM-M","name":"23SM_PCYellow-M"},{"sku":"23SM-L","name":"23SM_PCYellow-L"},{"sku":"23SM-XL","name":"23SM_PCYellow-XL"},{"sku":"24SM-S","name":"24SM_MC_CCOrange-S"},{"sku":"24SM-M","name":"24SM_MC_CCOrange-M"},{"sku":"24SM-L","name":"24SM_MC_CCOrange-L"},{"sku":"24SM-XL","name":"24SM_MC_CCOrange-XL"},{"sku":"25SM-S","name":"25SM_MC_CCSilver-S"},{"sku":"25SM-M","name":"25SM_MC_CCSilver-M"},{"sku":"25SM-L","name":"25SM_MC_CCSilver-L"},{"sku":"25SM-XL","name":"25SM_MC_CCSilver-XL"},{"sku":"26SM-S","name":"26SM_MC_SCGreen-S"},{"sku":"26SM-M","name":"26SM_MC_SCGreen-M"},{"sku":"26SM-L","name":"26SM_MC_SCGreen-L"},{"sku":"26SM-XL","name":"26SM_MC_SCGreen-XL"},{"sku":"27SM-S","name":"27SM_MC_SCBrown-S"},{"sku":"27SM-M","name":"27SM_MC_SCBrown-M"},{"sku":"27SM-L","name":"27SM_MC_SCBrown-L"},{"sku":"27SM-XL","name":"27SM_MC_SCBrown-XL"},{"sku":"28SM-S","name":"28SM_MC_SLBlue-S"},{"sku":"28SM-M","name":"28SM_MC_SLBlue-M"},{"sku":"28SM-L","name":"28SM_MC_SLBlue-L"},{"sku":"28SM-XL","name":"28SM_MC_SLBlue-XL"},{"sku":"29SM-S","name":"29SM_MC_SLGreen-S"},{"sku":"29SM-M","name":"29SM_MC_SLGreen-M"},{"sku":"29SM-L","name":"29SM_MC_SLGreen-L"},{"sku":"29SM-XL","name":"29SM_MC_SLGreen-XL"},{"sku":"30SM-S","name":"30SM_MC_SLBlue-S"},{"sku":"30SM-M","name":"30SM_MC_SLBlue-M"},{"sku":"30SM-L","name":"30SM_MC_SLBlue-L"},{"sku":"30SM-XL","name":"30SM_MC_SLBlue-XL"},{"sku":"31SM-S","name":"31SM_MC_SLPink-S"},{"sku":"31SM-M","name":"31SM_MC_SLPink-M"},{"sku":"31SM-L","name":"31SM_MC_SLPink-L"},{"sku":"31SM-XL","name":"31SM_MC_SLPink-XL"},{"sku":"32SM-S","name":"32SM_DCSilver-S"},{"sku":"32SM-M","name":"32SM_DCSilver-M"},{"sku":"32SM-L","name":"32SM_DCSilver-L"},{"sku":"32SM-XL","name":"32SM_DCSilver-XL"},{"sku":"33SM-S","name":"33SM_DCBlue-S"},{"sku":"33SM-M","name":"33SM_DCBlue-M"},{"sku":"33SM-L","name":"33SM_DCBlue-L"},{"sku":"33SM-XL","name":"33SM_DCBlue-XL"},{"sku":"34SM-S","name":"34SM_DCYellow-S"},{"sku":"34SM-M","name":"34SM_DCYellow-M"},{"sku":"34SM-L","name":"34SM_DCYellow-L"},{"sku":"34SM-XL","name":"34SM_DCYellow-XL"},{"sku":"35SM-S","name":"35SM_PLWhite-S"},{"sku":"35SM-M","name":"35SM_PLWhite-M"},{"sku":"35SM-L","name":"35SM_PLWhite-L"},{"sku":"35SM-XL","name":"35SM_PLWhite-XL"},{"sku":"36SM-S","name":"36SM_PLNavy-S"},{"sku":"36SM-M","name":"36SM_PLNavy-M"},{"sku":"36SM-L","name":"36SM_PLNavy-L"},{"sku":"36SM-XL","name":"36SM_PLNavy-XL"},{"sku":"37SM-S","name":"37SM_PLWine-S"},{"sku":"37SM-M","name":"37SM_PLWine-M"},{"sku":"37SM-L","name":"37SM_PLWine-L"},{"sku":"37SM-XL","name":"37SM_PLWine-XL"},{"sku":"38SM-S","name":"38SM_PLCyan-S"},{"sku":"38SM-M","name":"38SM_PLCyan-M"},{"sku":"38SM-L","name":"38SM_PLCyan-L"},{"sku":"38SM-XL","name":"38SM_PLCyan-XL"},{"sku":"39SM-S","name":"39SM_PLGreen-S"},{"sku":"39SM-M","name":"39SM_PLGreen-M"},{"sku":"39SM-L","name":"39SM_PLGreen-L"},{"sku":"39SM-XL","name":"39SM_PLGreen-XL"},{"sku":"40SM-S","name":"40SM_PCPink-S"},{"sku":"40SM-M","name":"40SM_PCPink-M"},{"sku":"40SM-L","name":"40SM_PCPink-L"},{"sku":"40SM-XL","name":"40SM_PCPink-XL"},{"sku":"41SM-S","name":"41SM_PLOrange-S"},{"sku":"41SM-M","name":"41SM_PLOrange-M"},{"sku":"41SM-L","name":"41SM_PLOrange-L"},{"sku":"41SM-XL","name":"41SM_PLOrange-XL"},{"sku":"42SM-S","name":"42SM_BD_CCMaroon-S"},{"sku":"42SM-M","name":"42SM_BD_CCMaroon-M"},{"sku":"42SM-L","name":"42SM_BD_CCMaroon-L"},{"sku":"42SM-XL","name":"42SM_BD_CCMaroon-XL"},{"sku":"43SM-S","name":"43SM_BD_CCGreen-S"},{"sku":"43SM-M","name":"43SM_BD_CCGreen-M"},{"sku":"43SM-L","name":"43SM_BD_CCGreen-L"},{"sku":"43SM-XL","name":"43SM_BD_CCGreen-XL"},{"sku":"44SM-S","name":"44SM_BD_CCWhite-S"},{"sku":"44SM-M","name":"44SM_BD_CCWhite-M"},{"sku":"44SM-L","name":"44SM_BD_CCWhite-L"},{"sku":"44SM-XL","name":"44SM_BD_CCWhite-XL"},{"sku":"45SM-S","name":"45SM_BD_CCBlue-S"},{"sku":"45SM-M","name":"45SM_BD_CCBlue-M"},{"sku":"45SM-L","name":"45SM_BD_CCBlue-L"},{"sku":"45SM-XL","name":"45SM_BD_CCBlue-XL"},{"sku":"46SM-S","name":"46SM_BD_CCSilver-S"},{"sku":"46SM-M","name":"46SM_BD_CCSilver-M"},{"sku":"46SM-L","name":"46SM_BD_CCSilver-L"},{"sku":"46SM-XL","name":"46SM_BD_CCSilver-XL"},{"sku":"47SM-S","name":"47SM_CCBeige-S"},{"sku":"47SM-M","name":"47SM_CCBeige-M"},{"sku":"47SM-L","name":"47SM_CCBeige-L"},{"sku":"47SM-XL","name":"47SM_CCBeige-XL"},{"sku":"48SM-S","name":"48SM_CCBlack-S"},{"sku":"48SM-M","name":"48SM_CCBlack-M"},{"sku":"48SM-L","name":"48SM_CCBlack-L"},{"sku":"48SM-XL","name":"48SM_CCBlack-XL"},{"sku":"49SM-S","name":"49SM_CCBlack-S"},{"sku":"49SM-M","name":"49SM_CCBlack-M"},{"sku":"49SM-L","name":"49SM_CCBlack-L"},{"sku":"49SM-XL","name":"49SM_CCBlack-XL"},{"sku":"50SM-S","name":"50SM_CCWhite-S"},{"sku":"50SM-M","name":"50SM_CCWhite-M"},{"sku":"50SM-L","name":"50SM_CCWhite-L"},{"sku":"50SM-XL","name":"50SM_CCWhite-XL"},{"sku":"51SM-S","name":"51SM_CCGreen-S"},{"sku":"51SM-M","name":"51SM_CCGreen-M"},{"sku":"51SM-L","name":"51SM_CCGreen-L"},{"sku":"51SM-XL","name":"51SM_CCGreen-XL"},{"sku":"52SM-S","name":"52SM_CCNavy-S"},{"sku":"52SM-M","name":"52SM_CCNavy-M"},{"sku":"52SM-L","name":"52SM_CCNavy-L"},{"sku":"52SM-XL","name":"52SM_CCNavy-XL"},{"sku":"53SM-S","name":"53SM_BD_CCNavy-S"},{"sku":"53SM-M","name":"53SM_BD_CCNavy-M"},{"sku":"53SM-L","name":"53SM_BD_CCNavy-L"},{"sku":"53SM-XL","name":"53SM_BD_CCNavy-XL"},{"sku":"54SM-S","name":"54SM_DCBrown-S"},{"sku":"54SM-M","name":"54SM_DCBrown-M"},{"sku":"54SM-L","name":"54SM_DCBrown-L"},{"sku":"54SM-XL","name":"54SM_DCBrown-XL"},{"sku":"55SM-S","name":"55SM_MC_CLGreen-S"},{"sku":"55SM-M","name":"55SM_MC_CLGreen-M"},{"sku":"55SM-L","name":"55SM_MC_CLGreen-L"},{"sku":"55SM-XL","name":"55SM_MC_CLGreen-XL"},{"sku":"56SM-S","name":"56SM_MC_CLPink-S"},{"sku":"56SM-M","name":"56SM_MC_CLPink-M"},{"sku":"56SM-L","name":"56SM_MC_CLPink-L"},{"sku":"56SM-XL","name":"56SM_MC_CLPink-XL"},{"sku":"57SM-S","name":"57SM_MC_CLYellow-S"},{"sku":"57SM-M","name":"57SM_MC_CLYellow-M"},{"sku":"57SM-L","name":"57SM_MC_CLYellow-L"},{"sku":"57SM-XL","name":"57SM_MC_CLYellow-XL"},{"sku":"58SM-S","name":"58SM_MC_CLGrey-S"},{"sku":"58SM-M","name":"58SM_MC_CLGrey-M"},{"sku":"58SM-L","name":"58SM_MC_CLGrey-L"},{"sku":"58SM-XL","name":"58SM_MC_CLGrey-XL"},{"sku":"59SM-S","name":"59SM_MC_SLPink-S"},{"sku":"59SM-M","name":"59SM_MC_SLPink-M"},{"sku":"59SM-L","name":"59SM_MC_SLPink-L"},{"sku":"59SM-XL","name":"59SM_MC_SLPink-XL"},{"sku":"60SM-S","name":"60SM_MC_SLGreen-S"},{"sku":"60SM-M","name":"60SM_MC_SLGreen-M"},{"sku":"60SM-L","name":"60SM_MC_SLGreen-L"},{"sku":"60SM-XL","name":"60SM_MC_SLGreen-XL"},{"sku":"61SM-S","name":"61SM_MC_SLNavy-S"},{"sku":"61SM-M","name":"61SM_MC_SLNavy-M"},{"sku":"61SM-L","name":"61SM_MC_SLNavy-L"},{"sku":"61SM-XL","name":"61SM_MC_SLNavy-XL"},{"sku":"62SM-S","name":"62SM_MC_SLPurple-S"},{"sku":"62SM-M","name":"62SM_MC_SLPurple-M"},{"sku":"62SM-L","name":"62SM_MC_SLPurple-L"},{"sku":"62SM-XL","name":"62SM_MC_SLPurple-XL"},{"sku":"63SM-S","name":"63SM_MC_SLPink-S"},{"sku":"63SM-M","name":"63SM_MC_SLPink-M"},{"sku":"63SM-L","name":"63SM_MC_SLPink-L"},{"sku":"63SM-XL","name":"63SM_MC_SLPink-XL"},{"sku":"64SM-S","name":"64SM_MC_SLBrown-S"},{"sku":"64SM-M","name":"64SM_MC_SLBrown-M"},{"sku":"64SM-L","name":"64SM_MC_SLBrown-L"},{"sku":"64SM-XL","name":"64SM_MC_SLBrown-XL"},{"sku":"65SM-S","name":"65SM_MC_SLGreen-S"},{"sku":"65SM-M","name":"65SM_MC_SLGreen-M"},{"sku":"65SM-L","name":"65SM_MC_SLGreen-L"},{"sku":"65SM-XL","name":"65SM_MC_SLGreen-XL"},{"sku":"66SM-S","name":"66SM_MC_SLBlue-S"},{"sku":"66SM-M","name":"66SM_MC_SLBlue-M"},{"sku":"66SM-L","name":"66SM_MC_SLBlue-L"},{"sku":"66SM-XL","name":"66SM_MC_SLBlue-XL"},{"sku":"67SM-S","name":"67SM_BD_PCBeige-S"},{"sku":"67SM-M","name":"67SM_BD_PCBeige-M"},{"sku":"67SM-L","name":"67SM_BD_PCBeige-L"},{"sku":"67SM-XL","name":"67SM_BD_PCBeige-XL"},{"sku":"68SM-S","name":"68SM_BD_PCPink-S"},{"sku":"68SM-M","name":"68SM_BD_PCPink-M"},{"sku":"68SM-L","name":"68SM_BD_PCPink-L"},{"sku":"68SM-XL","name":"68SM_BD_PCPink-XL"},{"sku":"69SM-S","name":"69SM_BD_PCSky-S"},{"sku":"69SM-M","name":"69SM_BD_PCSky-M"},{"sku":"69SM-L","name":"69SM_BD_PCSky-L"},{"sku":"69SM-XL","name":"69SM_BD_PCSky-XL"},{"sku":"70SM-S","name":"70SM_BD_PCGrey-S"},{"sku":"70SM-M","name":"70SM_BD_PCGrey-M"},{"sku":"70SM-L","name":"70SM_BD_PCGrey-L"},{"sku":"70SM-XL","name":"70SM_BD_PCGrey-XL"},{"sku":"71SM-S","name":"71SM_BD_PCPurple-S"},{"sku":"71SM-M","name":"71SM_BD_PCPurple-M"},{"sku":"71SM-L","name":"71SM_BD_PCPurple-L"},{"sku":"71SM-XL","name":"71SM_BD_PCPurple-XL"},{"sku":"72SM-S","name":"72SM_BD_PCCream-S"},{"sku":"72SM-M","name":"72SM_BD_PCCream-M"},{"sku":"72SM-L","name":"72SM_BD_PCCream-L"},{"sku":"72SM-XL","name":"72SM_BD_PCCream-XL"},{"sku":"73SM-S","name":"73SM_MC_SLBlack-S"},{"sku":"73SM-M","name":"73SM_MC_SLBlack-M"},{"sku":"73SM-L","name":"73SM_MC_SLBlack-L"},{"sku":"73SM-XL","name":"73SM_MC_SLBlack-XL"},{"sku":"74SM-S","name":"74SM_MC_SLBrown-S"},{"sku":"74SM-M","name":"74SM_MC_SLBrown-M"},{"sku":"74SM-L","name":"74SM_MC_SLBrown-L"},{"sku":"74SM-XL","name":"74SM_MC_SLBrown-XL"},{"sku":"75SM-S","name":"75SM_MC_SLNavy-S"},{"sku":"75SM-M","name":"75SM_MC_SLNavy-M"},{"sku":"75SM-L","name":"75SM_MC_SLNavy-L"},{"sku":"75SM-XL","name":"75SM_MC_SLNavy-XL"},{"sku":"76SM-S","name":"76SM_MC_SLGreen-S"},{"sku":"76SM-M","name":"76SM_MC_SLGreen-M"},{"sku":"76SM-L","name":"76SM_MC_SLGreen-L"},{"sku":"76SM-XL","name":"76SM_MC_SLGreen-XL"},{"sku":"77SM-S","name":"77SM_CCSky-S"},{"sku":"77SM-M","name":"77SM_CCSky-M"},{"sku":"77SM-L","name":"77SM_CCSky-L"},{"sku":"77SM-XL","name":"77SM_CCSky-XL"},{"sku":"78SM-S","name":"78SM_CCYellow-S"},{"sku":"78SM-M","name":"78SM_CCYellow-M"},{"sku":"78SM-L","name":"78SM_CCYellow-L"},{"sku":"78SM-XL","name":"78SM_CCYellow-XL"},{"sku":"79SM-S","name":"79SM_BD_SOOrange-S"},{"sku":"79SM-M","name":"79SM_BD_SOOrange-M"},{"sku":"79SM-L","name":"79SM_BD_SOOrange-L"},{"sku":"79SM-XL","name":"79SM_BD_SOOrange-XL"},{"sku":"80SM-S","name":"80SM_BD_SOGreen-S"},{"sku":"80SM-M","name":"80SM_BD_SOGreen-M"},{"sku":"80SM-L","name":"80SM_BD_SOGreen-L"},{"sku":"80SM-XL","name":"80SM_BD_SOGreen-XL"},{"sku":"81SM-S","name":"81SM_BD_SOPink-S"},{"sku":"81SM-M","name":"81SM_BD_SOPink-M"},{"sku":"81SM-L","name":"81SM_BD_SOPink-L"},{"sku":"81SM-XL","name":"81SM_BD_SOPink-XL"},{"sku":"82SM-S","name":"82SM_BD_SOGrey-S"},{"sku":"82SM-M","name":"82SM_BD_SOGrey-M"},{"sku":"82SM-L","name":"82SM_BD_SOGrey-L"},{"sku":"82SM-XL","name":"82SM_BD_SOGrey-XL"},{"sku":"83SM-S","name":"83SM_BD_SOBlue-S"},{"sku":"83SM-M","name":"83SM_BD_SOBlue-M"},{"sku":"83SM-L","name":"83SM_BD_SOBlue-L"},{"sku":"83SM-XL","name":"83SM_BD_SOBlue-XL"},{"sku":"84SM-S","name":"84SM_MC_SOBlack-S"},{"sku":"84SM-M","name":"84SM_MC_SOBlack-M"},{"sku":"84SM-L","name":"84SM_MC_SOBlack-L"},{"sku":"84SM-XL","name":"84SM_MC_SOBlack-XL"},{"sku":"85SM-S","name":"85SM_MC_SOBlue-S"},{"sku":"85SM-M","name":"85SM_MC_SOBlue-M"},{"sku":"85SM-L","name":"85SM_MC_SOBlue-L"},{"sku":"85SM-XL","name":"85SM_MC_SOBlue-XL"},{"sku":"86SM-S","name":"86SM_MC_SOBeige-S"},{"sku":"86SM-M","name":"86SM_MC_SOBeige-M"},{"sku":"86SM-L","name":"86SM_MC_SOBeige-L"},{"sku":"86SM-XL","name":"86SM_MC_SOBeige-XL"},{"sku":"87SM-S","name":"87SM_MC_SOPink-S"},{"sku":"87SM-M","name":"87SM_MC_SOPink-M"},{"sku":"87SM-L","name":"87SM_MC_SOPink-L"},{"sku":"87SM-XL","name":"87SM_MC_SOPink-XL"},{"sku":"88SM-S","name":"88SM_MC_SOSilver-S"},{"sku":"88SM-M","name":"88SM_MC_SOSilver-M"},{"sku":"88SM-L","name":"88SM_MC_SOSilver-L"},{"sku":"88SM-XL","name":"88SM_MC_SOSilver-XL"},{"sku":"89SM-S","name":"89SM_MC_SOSky-S"},{"sku":"89SM-M","name":"89SM_MC_SOSky-M"},{"sku":"89SM-L","name":"89SM_MC_SOSky-L"},{"sku":"89SM-XL","name":"89SM_MC_SOSky-XL"},{"sku":"90SM-S","name":"90SM_MC_PLWhite-S"},{"sku":"90SM-M","name":"90SM_MC_PLWhite-M"},{"sku":"90SM-L","name":"90SM_MC_PLWhite-L"},{"sku":"90SM-XL","name":"90SM_MC_PLWhite-XL"},{"sku":"91SM-S","name":"91SM_MC_PLSilver-S"},{"sku":"91SM-M","name":"91SM_MC_PLSilver-M"},{"sku":"91SM-L","name":"91SM_MC_PLSilver-L"},{"sku":"91SM-XL","name":"91SM_MC_PLSilver-XL"},{"sku":"92SM-S","name":"92SM_MC_PLCyan-S"},{"sku":"92SM-M","name":"92SM_MC_PLCyan-M"},{"sku":"92SM-L","name":"92SM_MC_PLCyan-L"},{"sku":"92SM-XL","name":"92SM_MC_PLCyan-XL"},{"sku":"93SM-S","name":"93SM_MC_PLYellow-S"},{"sku":"93SM-M","name":"93SM_MC_PLYellow-M"},{"sku":"93SM-L","name":"93SM_MC_PLYellow-L"},{"sku":"93SM-XL","name":"93SM_MC_PLYellow-XL"},{"sku":"94SM-S","name":"94SM_MC_PLOlive-S"},{"sku":"94SM-M","name":"94SM_MC_PLOlive-M"},{"sku":"94SM-L","name":"94SM_MC_PLOlive-L"},{"sku":"94SM-XL","name":"94SM_MC_PLOlive-XL"},{"sku":"95SM-S","name":"95SM_MC_PLGreen-S"},{"sku":"95SM-M","name":"95SM_MC_PLGreen-M"},{"sku":"95SM-L","name":"95SM_MC_PLGreen-L"},{"sku":"95SM-XL","name":"95SM_MC_PLGreen-XL"},{"sku":"96SM-S","name":"96SM_MC_PLBone-S"},{"sku":"96SM-M","name":"96SM_MC_PLBone-M"},{"sku":"96SM-L","name":"96SM_MC_PLBone-L"},{"sku":"96SM-XL","name":"96SM_MC_PLBone-XL"},{"sku":"97SM-S","name":"97SM_MC_PCNavy-S"},{"sku":"97SM-M","name":"97SM_MC_PCNavy-M"},{"sku":"97SM-L","name":"97SM_MC_PCNavy-L"},{"sku":"97SM-XL","name":"97SM_MC_PCNavy-XL"},{"sku":"98SM-S","name":"98SM_MC_PLBrown-S"},{"sku":"98SM-M","name":"98SM_MC_PLBrown-M"},{"sku":"98SM-L","name":"98SM_MC_PLBrown-L"},{"sku":"98SM-XL","name":"98SM_MC_PLBrown-XL"},{"sku":"99SM-S","name":"99SM_MC_PLBlack-S"},{"sku":"99SM-M","name":"99SM_MC_PLBlack-M"},{"sku":"99SM-L","name":"99SM_MC_PLBlack-L"},{"sku":"99SM-XL","name":"99SM_MC_PLBlack-XL"},{"sku":"100SM-S","name":"100SM_MC_SLOlive-S"},{"sku":"100SM-M","name":"100SM_MC_SLOlive-M"},{"sku":"100SM-L","name":"100SM_MC_SLOlive-L"},{"sku":"100SM-XL","name":"100SM_MC_SLOlive-XL"},{"sku":"101SM-S","name":"101SM_MC_SLSky-S"},{"sku":"101SM-M","name":"101SM_MC_SLSky-M"},{"sku":"101SM-L","name":"101SM_MC_SLSky-L"},{"sku":"101SM-XL","name":"101SM_MC_SLSky-XL"},{"sku":"102SM-S","name":"102SM_MC_SLSilver-S"},{"sku":"102SM-M","name":"102SM_MC_SLSilver-M"},{"sku":"102SM-L","name":"102SM_MC_SLSilver-L"},{"sku":"102SM-XL","name":"102SM_MC_SLSilver-XL"},{"sku":"103SM-S","name":"103SM_MC_SLLavender-S"},{"sku":"103SM-M","name":"103SM_MC_SLLavender-M"},{"sku":"103SM-L","name":"103SM_MC_SLLavender-L"},{"sku":"103SM-XL","name":"103SM_MC_SLLavender-XL"},{"sku":"104SM-S","name":"104SM_MC_SLNavy-S"},{"sku":"104SM-M","name":"104SM_MC_SLNavy-M"},{"sku":"104SM-L","name":"104SM_MC_SLNavy-L"},{"sku":"104SM-XL","name":"104SM_MC_SLNavy-XL"},{"sku":"105SM-S","name":"105SM_MC_SLBlack-S"},{"sku":"105SM-M","name":"105SM_MC_SLBlack-M"},{"sku":"105SM-L","name":"105SM_MC_SLBlack-L"},{"sku":"105SM-XL","name":"105SM_MC_SLBlack-XL"},{"sku":"106SM-S","name":"106SM_MC_PCGrey-S"},{"sku":"106SM-M","name":"106SM_MC_PCGrey-M"},{"sku":"106SM-L","name":"106SM_MC_PCGrey-L"},{"sku":"106SM-XL","name":"106SM_MC_PCGrey-XL"},{"sku":"107SM-S","name":"107SM_MC_PCPurple-S"},{"sku":"107SM-M","name":"107SM_MC_PCPurple-M"},{"sku":"107SM-L","name":"107SM_MC_PCPurple-L"},{"sku":"107SM-XL","name":"107SM_MC_PCPurple-XL"},{"sku":"108SM-S","name":"108SM_MC_PCTeal-S"},{"sku":"108SM-M","name":"108SM_MC_PCTeal-M"},{"sku":"108SM-L","name":"108SM_MC_PCTeal-L"},{"sku":"108SM-XL","name":"108SM_MC_PCTeal-XL"},{"sku":"109SM-S","name":"109SM_MC_PCGreen-S"},{"sku":"109SM-M","name":"109SM_MC_PCGreen-M"},{"sku":"109SM-L","name":"109SM_MC_PCGreen-L"},{"sku":"109SM-XL","name":"109SM_MC_PCGreen-XL"},{"sku":"110SM-S","name":"110SM_MC_PCMaroon-S"},{"sku":"110SM-M","name":"110SM_MC_PCMaroon-M"},{"sku":"110SM-L","name":"110SM_MC_PCMaroon-L"},{"sku":"110SM-XL","name":"110SM_MC_PCMaroon-XL"},{"sku":"111SM-S","name":"111SM_MC_PCGrey-S"},{"sku":"111SM-M","name":"111SM_MC_PCGrey-M"},{"sku":"111SM-L","name":"111SM_MC_PCGrey-L"},{"sku":"111SM-XL","name":"111SM_MC_PCGrey-XL"},{"sku":"112SM-S","name":"112SM_MC_PCBeige-S"},{"sku":"112SM-M","name":"112SM_MC_PCBeige-M"},{"sku":"112SM-L","name":"112SM_MC_PCBeige-L"},{"sku":"112SM-XL","name":"112SM_MC_PCBeige-XL"}]
+;
+const SKU_MAP = {};
+SKU_LIST.forEach(s => SKU_MAP[s.sku.toUpperCase()] = s);
+
+// ---- custom SKUs added from the app (synced live from Firestore) ----
+onSnapshot(collection(db, 'skus'), snap=>{
+  snap.docChanges().forEach(change=>{
+    const v = change.doc.data();
+    const code = v.sku.toUpperCase();
+    if(change.type === 'removed'){
+      delete SKU_MAP[code];
+      const idx = SKU_LIST.findIndex(s=>s.sku.toUpperCase()===code);
+      if(idx>-1) SKU_LIST.splice(idx,1);
+    } else {
+      if(!SKU_MAP[code]) SKU_LIST.push(v);
+      else Object.assign(SKU_MAP[code], v);
+      SKU_MAP[code] = v;
+    }
+  });
+}, err=>console.error(err));
+
+// ---- connection indicator ----
+const connDot = document.getElementById('connDot');
+const connText = document.getElementById('connText');
+window.addEventListener('online', () => setConn(true));
+window.addEventListener('offline', () => setConn(false));
+function setConn(live){
+  connDot.classList.toggle('live', live);
+  connText.textContent = live ? 'live' : 'offline';
+}
+setConn(navigator.onLine);
+
+// ---- toast ----
+let toastTimer;
+function showToast(msg, color){
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  t.querySelector('.tdot').style.background = color || 'var(--stock)';
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+// ---- tab switching ----
+window.switchView = function(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.querySelectorAll('nav.bottombar button').forEach(b=>b.classList.remove('active'));
+  document.querySelector(`nav.bottombar button[data-view="${name}"]`).classList.add('active');
+};
+
+// ---- date defaults ----
+const todayStr = new Date().toISOString().slice(0,10);
+['out','in','rto'].forEach(k => document.getElementById(k+'-date').value = todayStr);
+
+// ---- selected SKU state per type ----
+const selected = { out:null, in:null, rto:null };
+
+function renderSuggestions(type, matches, rawTerm){
+  const box = document.getElementById(type+'-suggestions');
+  if(!matches.length){
+    if(!rawTerm){ box.style.display='none'; box.innerHTML=''; return; }
+    box.innerHTML = `<div data-add="1"><div class="s-code" style="color:var(--stock)">+ Add new SKU "${rawTerm}"</div><div class="s-name">Not in the list yet — tap to create it</div></div>`;
+    box.style.display='block';
+    box.querySelector('div[data-add]').addEventListener('click', ()=> openAddSku(type, rawTerm));
+    return;
+  }
+  box.innerHTML = matches.slice(0,8).map(s =>
+    `<div data-sku="${s.sku}"><div class="s-code">${s.sku}</div><div class="s-name">${s.name}</div></div>`
+  ).join('');
+  box.style.display='block';
+  box.querySelectorAll('div[data-sku]').forEach(el=>{
+    el.addEventListener('click', ()=> confirmSku(type, el.getAttribute('data-sku')));
+  });
+}
+
+function confirmSku(type, skuCode){
+  const s = SKU_MAP[skuCode.toUpperCase()];
+  if(!s){ showToast('SKU not found: '+skuCode, 'var(--out)'); return; }
+  selected[type] = s;
+  document.getElementById(type+'-suggestions').style.display='none';
+  document.getElementById(type+'-sku-input').value = '';
+  document.getElementById(type+'-confirmed').innerHTML = `
+    <div class="sku-confirmed">
+      <div><div class="code">${s.sku}</div><div class="nm">${s.name}</div></div>
+      <button onclick="clearSku('${type}')">change</button>
+    </div>`;
+  updateSaveState(type);
+}
+window.clearSku = function(type){
+  selected[type] = null;
+  document.getElementById(type+'-confirmed').innerHTML = '';
+  updateSaveState(type);
+};
+
+function updateSaveState(type){
+  const btn = document.getElementById(type+'-save');
+  const qty = parseInt(document.getElementById(type+'-qty').value || '0');
+  btn.classList.toggle('disabled', !selected[type] || qty < 1);
+}
+
+['out','in','rto'].forEach(type=>{
+  const input = document.getElementById(type+'-sku-input');
+  input.addEventListener('input', ()=>{
+    const v = input.value.trim().toUpperCase();
+    if(!v){ renderSuggestions(type, []); return; }
+    const matches = SKU_LIST.filter(s =>
+      s.sku.toUpperCase().includes(v) || s.name.toUpperCase().includes(v)
+    );
+    renderSuggestions(type, matches, v);
+  });
+  input.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){
+      const v = input.value.trim().toUpperCase();
+      if(SKU_MAP[v]) confirmSku(type, v);
+    }
+  });
+  document.getElementById(type+'-qty').addEventListener('input', ()=>updateSaveState(type));
+});
+
+window.stepQty = function(type, delta){
+  const inp = document.getElementById(type+'-qty');
+  let v = parseInt(inp.value || '0') + delta;
+  if(v < 1) v = 1;
+  inp.value = v;
+  updateSaveState(type);
+};
+
+// ---- save entry ----
+const COLLECTIONS = { out:'outEntries', in:'inEntries', rto:'rtoEntries' };
+const STOCK_FIELD = { out:'out', in:'in', rto:'rto' };
+const COLORS = { out:'var(--out)', in:'var(--in)', rto:'var(--rto)' };
+const LABELS = { out:'Dispatch saved', in:'Stock-in saved', rto:'RTO saved' };
+
+window.saveEntry = async function(type){
+  const s = selected[type];
+  const qty = parseInt(document.getElementById(type+'-qty').value || '0');
+  const date = document.getElementById(type+'-date').value;
+  if(!s || qty < 1) return;
+
+  const btn = document.getElementById(type+'-save');
+  btn.classList.add('disabled');
+  btn.textContent = 'Saving…';
+
+  try{
+    await addDoc(collection(db, COLLECTIONS[type]), {
+      sku: s.sku, name: s.name, qty, date, createdAt: serverTimestamp()
+    });
+    await setDoc(doc(db, 'stock', s.sku), {
+      sku: s.sku, name: s.name,
+      [STOCK_FIELD[type]]: increment(qty)
+    }, { merge: true });
+
+    showToast(LABELS[type] + ` · ${s.sku} × ${qty}`, COLORS[type]);
+    clearSku(type);
+    document.getElementById(type+'-qty').value = 1;
+  }catch(err){
+    console.error(err);
+    showToast('Save failed — check connection', 'var(--out)');
+  }
+  btn.textContent = type==='out' ? 'Save dispatch' : (type==='in' ? 'Save stock in' : 'Save RTO');
+  updateSaveState(type);
+};
+
+// ---- recent entries (live) ----
+function fmtDate(d){
+  if(!d) return '';
+  const parts = d.split('-');
+  return parts.length===3 ? `${parts[2]}/${parts[1]}` : d;
+}
+['out','in','rto'].forEach(type=>{
+  const q = query(collection(db, COLLECTIONS[type]), orderBy('createdAt','desc'), limit(15));
+  onSnapshot(q, snap=>{
+    const el = document.getElementById(type+'-recent');
+    if(snap.empty){ el.innerHTML = '<div class="empty-state">No entries yet</div>'; return; }
+    el.innerHTML = snap.docs.map(d=>{
+      const v = d.data();
+      return `<div class="entry-row">
+        <div class="left"><div class="code">${v.sku}</div><div class="dt">${fmtDate(v.date)}</div></div>
+        <div class="right"><div class="qty" style="color:${COLORS[type]}">${v.qty}</div>
+        <button class="del" data-id="${d.id}" data-sku="${v.sku}" data-qty="${v.qty}" data-type="${type}">✕</button></div>
+      </div>`;
+    }).join('');
+    el.querySelectorAll('button.del').forEach(b=>{
+      b.addEventListener('click', async ()=>{
+        if(!confirm('Delete this entry and roll back stock?')) return;
+        const { id, sku, qty, type } = b.dataset;
+        await deleteDoc(doc(db, COLLECTIONS[type], id));
+        await setDoc(doc(db, 'stock', sku), { [STOCK_FIELD[type]]: increment(-parseInt(qty)) }, { merge:true });
+        showToast('Entry deleted', 'var(--muted)');
+      });
+    });
+  }, err=>console.error(err));
+});
+
+// ---- live stock ----
+let stockCache = [];
+onSnapshot(collection(db, 'stock'), snap=>{
+  stockCache = snap.docs.map(d=>{
+    const v = d.data();
+    const inQ = v.in||0, outQ = v.out||0, rtoQ = v.rto||0;
+    return { sku: v.sku||d.id, name: v.name||'', in:inQ, out:outQ, rto:rtoQ, stock: inQ+rtoQ-outQ };
+  }).sort((a,b)=>a.sku.localeCompare(b.sku));
+  renderStock();
+}, err=>console.error(err));
+
+function renderStock(){
+  const term = document.getElementById('stock-search').value.trim().toUpperCase();
+  const rows = term
+    ? stockCache.filter(r => r.sku.toUpperCase().includes(term) || r.name.toUpperCase().includes(term))
+    : stockCache;
+
+  document.getElementById('sum-skus').textContent = stockCache.length;
+  document.getElementById('sum-units').textContent = stockCache.reduce((a,r)=>a+r.stock,0);
+  document.getElementById('sum-zero').textContent = stockCache.filter(r=>r.stock<=0).length;
+
+  const list = document.getElementById('stock-list');
+  if(!rows.length){ list.innerHTML = '<div class="empty-state">No matching SKUs</div>'; return; }
+  list.innerHTML = rows.map(r=>`
+    <div class="stock-row">
+      <div><div class="code">${r.sku}</div><div class="nm">${r.name}</div></div>
+      <div class="qty-box">
+        <div class="n ${r.stock<=0?'zero':''}">${r.stock}</div>
+        <div class="breakdown">IN ${r.in} · OUT ${r.out} · RTO ${r.rto}</div>
+      </div>
+    </div>`).join('');
+}
+document.getElementById('stock-search').addEventListener('input', renderStock);
+
+// ---- bulk add SKUs ----
+window.openBulkAdd = function(){
+  document.getElementById('bulk-text').value = '';
+  document.getElementById('bulk-preview').textContent = 'Paste your list above';
+  document.getElementById('bulkAddModal').classList.add('show');
+};
+window.closeBulkAdd = function(){
+  document.getElementById('bulkAddModal').classList.remove('show');
+};
+function parseBulkText(){
+  const raw = document.getElementById('bulk-text').value;
+  const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
+  const seen = new Set();
+  const toAdd = [];
+  let skippedExisting = 0, skippedDupe = 0, skippedInvalid = 0;
+  lines.forEach(line=>{
+    const parts = line.split(',');
+    const code = (parts[0]||'').trim().toUpperCase();
+    const name = (parts.slice(1).join(',')||'').trim() || code;
+    if(!code){ skippedInvalid++; return; }
+    if(SKU_MAP[code]){ skippedExisting++; return; }
+    if(seen.has(code)){ skippedDupe++; return; }
+    seen.add(code);
+    toAdd.push({ sku: code, name });
+  });
+  return { toAdd, skippedExisting, skippedDupe, skippedInvalid };
+}
+document.getElementById('bulk-text').addEventListener('input', ()=>{
+  const { toAdd, skippedExisting, skippedDupe, skippedInvalid } = parseBulkText();
+  let msg = `${toAdd.length} new SKU${toAdd.length===1?'':'s'} ready to add`;
+  const skipped = [];
+  if(skippedExisting) skipped.push(`${skippedExisting} already exist`);
+  if(skippedDupe) skipped.push(`${skippedDupe} duplicate lines`);
+  if(skippedInvalid) skipped.push(`${skippedInvalid} blank/invalid`);
+  if(skipped.length) msg += ` — skipping ${skipped.join(', ')}`;
+  document.getElementById('bulk-preview').textContent = msg;
+});
+window.submitBulkAdd = async function(){
+  const { toAdd } = parseBulkText();
+  if(!toAdd.length){ showToast('Nothing new to add', 'var(--out)'); return; }
+  const btn = document.getElementById('bulk-submit-btn');
+  btn.classList.add('disabled');
+  btn.textContent = 'Adding…';
+  try{
+    for(let i=0; i<toAdd.length; i+=450){
+      const chunk = toAdd.slice(i, i+450);
+      const batch = writeBatch(db);
+      chunk.forEach(s => batch.set(doc(db, 'skus', s.sku), { sku: s.sku, name: s.name }));
+      await batch.commit();
+    }
+    showToast(`${toAdd.length} SKUs added`, 'var(--stock)');
+    closeBulkAdd();
+  }catch(err){
+    console.error(err);
+    showToast('Bulk add failed — check connection', 'var(--out)');
+  }
+  btn.classList.remove('disabled');
+  btn.textContent = 'Add SKUs';
+};
+
+// ---- add new SKU ----
+let addSkuTarget = null;
+window.openAddSku = function(type, prefillCode){
+  addSkuTarget = type;
+  document.getElementById(type+'-suggestions').style.display = 'none';
+  document.getElementById('addsku-code').value = prefillCode || '';
+  document.getElementById('addsku-name').value = '';
+  document.getElementById('addSkuModal').classList.add('show');
+  setTimeout(()=>document.getElementById('addsku-name').focus(), 150);
+};
+window.closeAddSku = function(){
+  document.getElementById('addSkuModal').classList.remove('show');
+};
+window.submitAddSku = async function(){
+  const code = document.getElementById('addsku-code').value.trim().toUpperCase();
+  const name = document.getElementById('addsku-name').value.trim();
+  if(!code){ showToast('Enter a SKU code', 'var(--out)'); return; }
+  if(SKU_MAP[code]){ showToast('That SKU already exists', 'var(--out)'); return; }
+  try{
+    await setDoc(doc(db, 'skus', code), { sku: code, name: name || code });
+    showToast('SKU added: '+code, 'var(--stock)');
+    closeAddSku();
+    if(addSkuTarget) confirmSku(addSkuTarget, code);
+  }catch(err){
+    console.error(err);
+    showToast('Could not add SKU — check connection', 'var(--out)');
+  }
+};
+
+// ---- barcode scanner ----
+let html5QrCode;
+let scanTarget = null;
+window.openScanner = function(type){
+  scanTarget = type;
+  document.getElementById('scanModal').classList.add('show');
+  html5QrCode = new Html5Qrcode("reader");
+  const config = { fps: 12, qrbox: { width: 260, height: 120 },
+    formatsToSupport: [ Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.QR_CODE ] };
+  html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess).catch(err=>{
+    showToast('Camera unavailable — type SKU manually', 'var(--out)');
+    closeScanner();
+  });
+};
+function onScanSuccess(decodedText){
+  const code = decodedText.trim().toUpperCase();
+  if(SKU_MAP[code]){
+    confirmSku(scanTarget, code);
+    closeScanner();
+  } else {
+    const target = scanTarget;
+    closeScanner();
+    showToast('New barcode — add it as a SKU', 'var(--rto)');
+    openAddSku(target, code);
+  }
+}
+window.closeScanner = function(){
+  document.getElementById('scanModal').classList.remove('show');
+  if(html5QrCode){
+    html5QrCode.stop().then(()=>html5QrCode.clear()).catch(()=>{});
+  }
+};
+
+setConn(true);
+</script>
+</body>
+</html>
