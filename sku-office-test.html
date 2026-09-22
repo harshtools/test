@@ -748,6 +748,20 @@ body::before {
   transform: translateY(-2px);
 }
 
+/* Single */
+.btn-single {
+  color: var(--emerald);
+  border-color: rgba(16,185,129,.2);
+  box-shadow: 0 0 14px rgba(16,185,129,.06);
+}
+.btn-single .btn-icon { background: var(--emerald-dim); }
+.btn-single:hover:not(:disabled) {
+  background: var(--emerald-dim);
+  border-color: rgba(16,185,129,.4);
+  box-shadow: 0 0 28px rgba(16,185,129,.18);
+  transform: translateY(-2px);
+}
+
 /* ══════════════════════════════════
    STAT CARDS
 ══════════════════════════════════ */
@@ -1006,7 +1020,7 @@ canvas:hover { box-shadow: 0 8px 36px rgba(0,0,0,.6), 0 0 0 1px rgba(99,102,241,
    PICKLIST PANELS
 ══════════════════════════════════ */
 .picklist-panels {
-  display: none; grid-template-columns: 1fr 1fr; gap: 18px;
+  display: none; grid-template-columns: 1fr 1fr 1fr; gap: 18px;
 }
 .pl-inner {
   padding: 14px; max-height: 440px; overflow-y: auto;
@@ -1167,12 +1181,14 @@ button, input, select, label, .zoom-btn, .pcard-btn,
 :root[data-theme="light"] .btn-stamp  { color: var(--cyan); }
 :root[data-theme="light"] .btn-all    { color: var(--violet); }
 :root[data-theme="light"] .btn-combo  { color: var(--rose); }
+:root[data-theme="light"] .btn-single { color: var(--emerald); }
 
 :root[data-theme="light"] .btn-icon { background: var(--surface-2); }
 :root[data-theme="light"] .btn-process .btn-icon { background: rgba(79,70,229,.12); }
 :root[data-theme="light"] .btn-stamp  .btn-icon  { background: var(--cyan-dim); }
 :root[data-theme="light"] .btn-all    .btn-icon  { background: var(--violet-dim); }
 :root[data-theme="light"] .btn-combo  .btn-icon  { background: var(--rose-dim); }
+:root[data-theme="light"] .btn-single .btn-icon  { background: var(--emerald-dim); }
 
 :root[data-theme="light"] .zoom-controls,
 :root[data-theme="light"] .pcard-btn { background: var(--surface-0); }
@@ -1318,6 +1334,7 @@ button, input, select, label, .zoom-btn, .pcard-btn,
 :root:not([data-theme="light"]) .btn-stamp  { border-left-color: rgba(34,211,238,.25); }
 :root:not([data-theme="light"]) .btn-all    { border-left-color: rgba(167,139,250,.25); }
 :root:not([data-theme="light"]) .btn-combo  { border-left-color: rgba(244,63,94,.25); }
+:root:not([data-theme="light"]) .btn-single { border-left-color: rgba(16,185,129,.25); }
 :root:not([data-theme="light"]) .btn-process { border-left-color: rgba(99,102,241,.45); }
 
 /* Act btn icon — subtle inner glow dark */
@@ -1325,6 +1342,7 @@ button, input, select, label, .zoom-btn, .pcard-btn,
 :root:not([data-theme="light"]) .btn-stamp  .btn-icon  { box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 0 10px rgba(34,211,238,.18); }
 :root:not([data-theme="light"]) .btn-all    .btn-icon  { box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 0 10px rgba(167,139,250,.18); }
 :root:not([data-theme="light"]) .btn-combo  .btn-icon  { box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 0 10px rgba(244,63,94,.18); }
+:root:not([data-theme="light"]) .btn-single .btn-icon  { box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 0 10px rgba(16,185,129,.18); }
 
 /* Scrollbar neon accent in dark */
 :root:not([data-theme="light"]) ::-webkit-scrollbar-thumb {
@@ -1466,7 +1484,7 @@ button, input, select, label, .zoom-btn, .pcard-btn,
       </div>
     </div>
 
-    <!-- RIGHT PANEL — 4 stacked action buttons -->
+    <!-- RIGHT PANEL — stacked action buttons -->
     <div class="right-panel">
       <button class="act-btn lg-btn" onclick="loadFromGoogleSheet()" style="border-color: rgba(99,102,241,0.4);">
         <span class="btn-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></span>
@@ -1509,6 +1527,18 @@ button, input, select, label, .zoom-btn, .pcard-btn,
         <span class="btn-label">
           <span class="btn-title">All Orders Picklist</span>
           <span class="btn-sub">office-wise PDF</span>
+        </span>
+      </button>
+      <button class="act-btn btn-single lg-btn" id="picklistSingleBtn" disabled>
+        <span class="btn-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="4" y="3" width="16" height="18" rx="2"/>
+  <line x1="9" y1="9" x2="15" y2="9"/>
+  <line x1="9" y1="13" x2="13" y2="13"/>
+  <circle cx="16.5" cy="13" r="1" fill="currentColor" stroke="none"/>
+</svg></span>
+        <span class="btn-label">
+          <span class="btn-title">Single Order Picklist</span>
+          <span class="btn-sub">single-item orders only</span>
         </span>
       </button>
       <button class="act-btn btn-combo lg-btn" id="picklistComboBtn" disabled>
@@ -1593,7 +1623,7 @@ button, input, select, label, .zoom-btn, .pcard-btn,
     <div class="picklist-panels" id="picklistPanels">
       <div class="pcard lg-card">
         <div class="pcard-hdr">
-          <div class="pcard-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 12 2 2 4-4"/><path d="M9 17h4"/></svg> All Orders Pick List</div>
+          <div class="pcard-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 12 2 2 4-4"/><path d="M9 17h4"/></svg> All Orders Picklist</div>
           <div class="pcard-actions">
             <button class="pcard-btn violet lg-btn" id="panelAllGenBtn" disabled>⬇ Generate PDF</button>
           </div>
@@ -1602,7 +1632,16 @@ button, input, select, label, .zoom-btn, .pcard-btn,
       </div>
       <div class="pcard lg-card">
         <div class="pcard-hdr">
-          <div class="pcard-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l9 4.5-9 4.5-9-4.5L12 2z"/><path d="M21 12l-9 4.5L3 12"/><path d="M21 17l-9 4.5L3 17"/></svg> Combo Orders Pick List</div>
+          <div class="pcard-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="13" y2="13"/></svg> Single Order Picklist</div>
+          <div class="pcard-actions">
+            <button class="pcard-btn green lg-btn" id="panelSingleGenBtn" disabled>⬇ Generate PDF</button>
+          </div>
+        </div>
+        <div class="pl-inner" id="singleOrdersGrid"><div class="pl-empty">Process labels first</div></div>
+      </div>
+      <div class="pcard lg-card">
+        <div class="pcard-hdr">
+          <div class="pcard-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l9 4.5-9 4.5-9-4.5L12 2z"/><path d="M21 12l-9 4.5L3 12"/><path d="M21 17l-9 4.5L3 17"/></svg> Combo Orders Picklist</div>
           <div class="pcard-actions">
             <button class="pcard-btn amber lg-btn" id="panelComboGenBtn" disabled><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Generate PDF</button>
           </div>
@@ -2258,7 +2297,7 @@ document.getElementById('processBtn').addEventListener('click', async () => {
   document.getElementById('statsRow').style.display = 'none';
   document.getElementById('previewSection').style.display = 'grid';
   document.getElementById('picklistPanels').style.display = 'none';
-  ['downloadBtn','picklistAllBtn','picklistComboBtn','previewDownloadBtn','previewPrintBtn','panelAllGenBtn','panelComboGenBtn']
+  ['downloadBtn','picklistAllBtn','picklistSingleBtn','picklistComboBtn','previewDownloadBtn','previewPrintBtn','panelAllGenBtn','panelSingleGenBtn','panelComboGenBtn']
     .forEach(id => { document.getElementById(id).disabled = true; });
   stampedPdfBytes = null;
   allOrderData = [];
@@ -2538,11 +2577,12 @@ document.getElementById('processBtn').addEventListener('click', async () => {
     document.getElementById('picklistPanels').style.display = 'grid';
 
     setTimeout(() => {
-      renderPicklistPanel(buildOfficeMap(false), 'all');
-      renderPicklistPanel(buildOfficeMap(true), 'combo');
+      renderPicklistPanel(buildOfficeMap('all'), 'all');
+      renderPicklistPanel(buildOfficeMap('single'), 'single');
+      renderPicklistPanel(buildOfficeMap('combo'), 'combo');
     }, 100);
 
-    ['downloadBtn','picklistAllBtn','picklistComboBtn','previewDownloadBtn','previewPrintBtn','panelAllGenBtn','panelComboGenBtn']
+    ['downloadBtn','picklistAllBtn','picklistSingleBtn','picklistComboBtn','previewDownloadBtn','previewPrintBtn','panelAllGenBtn','panelSingleGenBtn','panelComboGenBtn']
       .forEach(id => { document.getElementById(id).disabled = false; });
 
     setProg(100);
@@ -2560,10 +2600,13 @@ document.getElementById('processBtn').addEventListener('click', async () => {
 async function bakePDF() { return stampedPdfBytes; }
 
 // ── Build office map for picklist ──
-function buildOfficeMap(comboOnly) {
+// mode: 'all' → every order, 'combo' → multi-item orders only, 'single' → single-item (one SKU, qty 1) orders only
+function buildOfficeMap(mode) {
   const map = {};
   for (const order of allOrderData) {
-    if (comboOnly && !order.isMulti && !(order.totalQty > 1)) continue;
+    const isComboOrder = order.isMulti || order.totalQty > 1;
+    if (mode === 'combo' && !isComboOrder) continue;
+    if (mode === 'single' && isComboOrder) continue;
     for (const item of (order.items || order.skus || [])) {
       const sku = sanitizeSku(item.sku);
       const off = item.office || 'Unknown';
@@ -2583,12 +2626,13 @@ const BCOLS = ['#6366f1','#34d399','#fbbf24','#8b5cf6','#f43f5e','#22d3ee','#f47
 
 // ── Render picklist panel ──
 function renderPicklistPanel(officeMap, panelType) {
-  const gridId = panelType === 'combo' ? 'comboOrdersGrid' : 'allOrdersGrid';
+  const gridId = panelType === 'combo' ? 'comboOrdersGrid' : (panelType === 'single' ? 'singleOrdersGrid' : 'allOrdersGrid');
   const grid = document.getElementById(gridId);
   grid.innerHTML = '';
   const offices = Object.keys(officeMap).sort((a, b) => parseInt(a) - parseInt(b));
   if (!offices.length) {
-    grid.innerHTML = '<div class="pl-empty">' + (panelType === 'combo' ? 'No multi-item orders found' : 'No data') + '</div>';
+    const emptyMsg = panelType === 'combo' ? 'No multi-item orders found' : (panelType === 'single' ? 'No single-item orders found' : 'No data');
+    grid.innerHTML = '<div class="pl-empty">' + emptyMsg + '</div>';
     return;
   }
   offices.forEach((off, oi) => {
@@ -2637,19 +2681,27 @@ document.getElementById('previewPrintBtn').addEventListener('click', () => {
 });
 document.getElementById('picklistAllBtn').addEventListener('click', async () => {
   if (!allOrderData.length) { alert('Process PDF first.'); return; }
-  await generatePicklistPDF(buildOfficeMap(false), 'All Orders Pick List');
+  await generatePicklistPDF(buildOfficeMap('all'), 'All Orders Picklist');
+});
+document.getElementById('picklistSingleBtn').addEventListener('click', async () => {
+  if (!allOrderData.length) { alert('Process PDF first.'); return; }
+  await generatePicklistPDF(buildOfficeMap('single'), 'Single Order Picklist');
 });
 document.getElementById('picklistComboBtn').addEventListener('click', async () => {
   if (!allOrderData.length) { alert('Process PDF first.'); return; }
-  await generatePicklistPDF(buildOfficeMap(true), 'Combo Orders Pick List');
+  await generatePicklistPDF(buildOfficeMap('combo'), 'Combo Orders Picklist');
 });
 document.getElementById('panelAllGenBtn').addEventListener('click', async () => {
   if (!allOrderData.length) { alert('Process PDF first.'); return; }
-  await generatePicklistPDF(buildOfficeMap(false), 'All Orders Pick List');
+  await generatePicklistPDF(buildOfficeMap('all'), 'All Orders Picklist');
+});
+document.getElementById('panelSingleGenBtn').addEventListener('click', async () => {
+  if (!allOrderData.length) { alert('Process PDF first.'); return; }
+  await generatePicklistPDF(buildOfficeMap('single'), 'Single Order Picklist');
 });
 document.getElementById('panelComboGenBtn').addEventListener('click', async () => {
   if (!allOrderData.length) { alert('Process PDF first.'); return; }
-  await generatePicklistPDF(buildOfficeMap(true), 'Combo Orders Pick List');
+  await generatePicklistPDF(buildOfficeMap('combo'), 'Combo Orders Picklist');
 });
 
 // ── Drag & drop ──
@@ -2737,7 +2789,7 @@ async function generatePicklistPDF(officeMap,title){
   const MARGIN_BOT = 44;   // footer reserve
 
   /* ── layout constants (all in pt) ── */
-  const PH   = 40;   // PICK LIST header box height
+  const PH   = 40;   // Picklist header box height
   const SH   = 34;   // summary box height
   const OHDR = 22;   // office block header band height
   const CHDR = 16;   // column-header row height
@@ -2775,9 +2827,9 @@ async function generatePicklistPDF(officeMap,title){
   /* ════ FIRST PAGE HEADER ════ */
   addPage();
 
-  /* PICK LIST bordered box */
+  /* Picklist bordered box */
   page.drawRectangle({x:ML, y:y-PH, width:CW, height:PH, color:WH, borderColor:BRD, borderWidth:0.7});
-  page.drawText('PICK LIST',        {x:ML+12, y:y-PH+26, size:14, font:FB, color:BK});
+  page.drawText('Picklist',        {x:ML+12, y:y-PH+26, size:14, font:FB, color:BK});
   page.drawText('John Ellies India',{x:ML+12, y:y-PH+11, size:7.5, font:FR, color:DG});
   page.drawText(title,              {x:ML+120, y:y-PH+26, size:8.5, font:FR, color:DG});
   page.drawText('Date: '+today,     {x:W-MR-76, y:y-PH+26, size:8.5, font:FR, color:DG});
