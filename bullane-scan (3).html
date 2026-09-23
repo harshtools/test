@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bullane Scan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#08090c;
+    --surface:#12151b;
+    --surface-2:#191d25;
+    --surface-3:#20252f;
+    --border:#24282f;
+    --text:#eef0f3;
+    --muted:#8992a1;
+    --muted-2:#5b6270;
+
+    --brand:#5b7fd6;
+    --brand-dim:#1a2338;
+
+    --in:#3fd68c;
+    --in-dim:#0f2c1e;
+    --out:#e0725a;
+    --out-dim:#301a14;
+    --rto:#e0b45a;
+    --rto-dim:#302512;
+    --history:#8fa3e0;
+    --history-dim:#1a2036;
+
+    --current-accent: var(--rto);
+
+    --iris-1:#3fd68c;
+    --iris-2:#5b7fd6;
+    --iris-3:#b28bf0;
+
+    --radius-lg:32px;
+    --radius-md:18px;
+
+    --green:#4bd98a;
+    --red:#e0655a;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, monospace;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html, body{ height:100%; }
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse 900px 500px at 15% -8%, rgba(91,127,214,0.10), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 85% 10%, rgba(224,180,90,0.06), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+  }
+
+  .shell{
+    display:flex;
+    min-height:100vh;
+  }
+
+  /* ---------------- sidebar ---------------- */
+  aside{
+    flex:none;
+    width:232px;
+    background:rgba(255,255,255,0.02);
+    border-right:1px solid rgba(255,255,255,0.06);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+    display:flex;
+    flex-direction:column;
+    padding:22px 16px;
+    position:relative;
+    overflow:hidden;
+  }
+  aside::before{
+    content:"";
+    position:absolute;
+    top:-70px; left:-60px;
+    width:200px; height:200px;
+    background:radial-gradient(circle, var(--brand) 0%, transparent 70%);
+    filter:blur(50px);
+    opacity:0.22;
+    pointer-events:none;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:6px 10px 24px;
+    position:relative;
+    z-index:1;
+  }
+  .brand-mark{
+    width:28px; height:28px;
+    border-radius:8px;
+    object-fit:cover;
+    flex:none;
+    background:#e5e5e7;
+    box-shadow:0 4px 14px -4px rgba(0,0,0,0.5);
+  }
+  .brand-name{
+    font-size:15px;
+    font-weight:700;
+    letter-spacing:0.1px;
+  }
+
+  nav{ display:flex; flex-direction:column; gap:5px; position:relative; z-index:1; }
+  .nav-btn{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:11px 12px;
+    border-radius:14px;
+    background:rgba(255,255,255,0.02);
+    border:1px solid rgba(255,255,255,0.05);
+    color:var(--muted);
+    cursor:pointer;
+    font-size:13.5px;
+    font-weight:600;
+    transition:background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .nav-btn-main{ display:flex; align-items:center; gap:12px; min-width:0; }
+  .nav-btn svg{ width:18px; height:18px; flex:none; }
+  .nav-arrow{ width:14px; height:14px; flex:none; opacity:0; transform:translateX(-3px); transition:opacity 0.15s, transform 0.15s; }
+  .nav-btn:hover{ background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.09); color:var(--text); }
+  .nav-btn:hover .nav-arrow{ opacity:0.6; transform:translateX(0); }
+  .nav-btn.active-in{ color:var(--in); background:rgba(63,214,140,0.10); border-color:rgba(63,214,140,0.25); }
+  .nav-btn.active-out{ color:var(--out); background:rgba(224,114,90,0.10); border-color:rgba(224,114,90,0.25); }
+  .nav-btn.active-rto{ color:var(--rto); background:rgba(224,180,90,0.10); border-color:rgba(224,180,90,0.25); }
+  .nav-btn.active-history{ color:var(--history); background:rgba(143,163,224,0.10); border-color:rgba(143,163,224,0.25); }
+  .nav-btn.active-in .nav-arrow, .nav-btn.active-out .nav-arrow, .nav-btn.active-rto .nav-arrow, .nav-btn.active-history .nav-arrow{ opacity:0.9; transform:translateX(0); }
+
+  .nav-divider{
+    height:1px;
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+    margin:12px 10px;
+  }
+
+  .sidebar-status{
+    margin-top:auto;
+    display:flex;
+    align-items:center;
+    gap:7px;
+    padding:10px 12px;
+    font-size:12px;
+    color:var(--muted-2);
+    position:relative;
+    z-index:1;
+  }
+  .sidebar-status .dot{
+    width:7px; height:7px; border-radius:50%;
+    background:var(--muted-2);
+  }
+  .sidebar-status.online .dot{ background:var(--green); box-shadow:0 0 8px var(--green); }
+  .sidebar-status.online{ color:var(--muted); }
+
+  /* ---------------- main ---------------- */
+  main{
+    flex:1;
+    min-width:0;
+    padding:36px 40px 40px;
+  }
+  .content-cap{
+    max-width:520px;
+  }
+
+  .page-title{
+    font-size:26px;
+    font-weight:800;
+    letter-spacing:-0.02em;
+    margin:0 0 6px;
+  }
+  .page-sub{
+    font-size:13.5px;
+    color:var(--muted);
+    margin:0 0 22px;
+  }
+
+  .config-warning{
+    background:#241d0f;
+    border:1px solid #43350f;
+    color:#e3bd6c;
+    font-size:12.5px;
+    padding:13px 15px;
+    border-radius:9px;
+    margin-bottom:20px;
+    line-height:1.55;
+    max-width:640px;
+  }
+  .config-warning code{
+    font-family:var(--mono);
+    background:#1b160a;
+    padding:1px 5px;
+    border-radius:4px;
+  }
+
+  .card{
+    background:linear-gradient(165deg, rgba(255,255,255,0.055), rgba(255,255,255,0.015));
+    border:1px solid rgba(255,255,255,0.09);
+    border-radius:var(--radius-lg);
+    padding:28px;
+    position:relative;
+    box-shadow:
+      0 40px 90px -30px rgba(0,0,0,0.8),
+      inset 0 1px 0 rgba(255,255,255,0.1);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+  }
+  .card::before{
+    content:"";
+    position:absolute;
+    bottom:-80px; left:-60px;
+    width:220px; height:220px;
+    background:radial-gradient(circle, var(--current-accent) 0%, transparent 70%);
+    filter:blur(58px);
+    opacity:0.26;
+    z-index:-1;
+    pointer-events:none;
+  }
+  .card::after{
+    content:"";
+    position:absolute;
+    top:-70px; right:-50px;
+    width:220px; height:220px;
+    background:radial-gradient(circle, #ffffff 0%, transparent 70%);
+    filter:blur(60px);
+    opacity:0.12;
+    z-index:-1;
+    pointer-events:none;
+  }
+  .card-rim{
+    position:absolute;
+    inset:-1px;
+    border-radius:inherit;
+    padding:1.5px;
+    background:conic-gradient(from 0deg,
+      transparent 0deg,
+      #ffffff 35deg,
+      transparent 95deg,
+      transparent 195deg,
+      var(--current-accent) 225deg,
+      transparent 265deg,
+      transparent 360deg);
+    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor;
+    mask-composite:exclude;
+    opacity:0.8;
+    pointer-events:none;
+  }
+  .card-shine{
+    position:absolute;
+    inset:0;
+    border-radius:inherit;
+    background:linear-gradient(115deg, transparent 32%, rgba(255,255,255,0.07) 46%, transparent 62%);
+    mix-blend-mode:screen;
+    pointer-events:none;
+  }
+
+  .hero-title{
+    font-size:26px;
+    font-weight:800;
+    letter-spacing:-0.02em;
+    margin:0 0 6px;
+    transition:color 0.15s;
+  }
+  .hero-sub{
+    font-size:13.5px;
+    color:var(--muted);
+    margin:0 0 22px;
+  }
+  .field-label{
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:8px;
+  }
+  .sku-row{ display:flex; gap:10px; align-items:center; }
+  input#skuInput{
+    flex:1;
+    min-width:0;
+    background:rgba(255,255,255,0.03);
+    border:1px solid rgba(255,255,255,0.08);
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:15px;
+    padding:14px 18px;
+    border-radius:999px;
+    outline:none;
+    transition:border-color 0.15s, box-shadow 0.15s;
+  }
+  input#skuInput:focus{ border-color:var(--current-accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--current-accent) 22%, transparent); }
+  .scan-btn{
+    flex:none;
+    width:48px; height:48px;
+    background:var(--current-accent);
+    border:1px solid var(--current-accent);
+    border-radius:50%;
+    color:#0b0f10;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 8px 22px -8px var(--current-accent);
+    transition:filter 0.15s, box-shadow 0.15s, transform 0.1s;
+  }
+  .scan-btn:hover{ filter:brightness(1.08); }
+  .scan-btn:active{ transform:scale(0.96); }
+  .scan-btn.active{
+    box-shadow:0 0 0 4px color-mix(in srgb, var(--current-accent) 25%, transparent), 0 8px 22px -8px var(--current-accent);
+  }
+  .torch-btn{
+    flex:none;
+    width:34px; height:34px;
+    background:rgba(255,255,255,0.05);
+    border:1px solid rgba(255,255,255,0.09);
+    border-radius:50%;
+    color:var(--muted);
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    transition:background 0.15s, color 0.15s, box-shadow 0.15s;
+  }
+  .torch-btn svg{ width:15px; height:15px; }
+  .torch-btn:hover{ color:var(--text); }
+  .torch-btn.active{
+    background:#e0b45a;
+    border-color:#e0b45a;
+    color:#221a06;
+    box-shadow:0 6px 16px -4px #e0b45a;
+  }
+
+  #cameraPanel{ margin-top:12px; display:none; }
+  #cameraPanel.open{ display:block; }
+  #reader{ width:100%; border-radius:9px; overflow:hidden; position:relative; z-index:1; }
+  #scanFlash{
+    position:absolute;
+    inset:0;
+    border-radius:9px;
+    background:rgba(75,189,125,0.32);
+    border:3px solid var(--green);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 0.12s ease;
+    z-index:50;
+  }
+  #scanFlash.show{ opacity:1; }
+  #scanFlash .flash-label{
+    background:var(--green);
+    color:#0d1a12;
+    font-weight:700;
+    font-size:13px;
+    padding:6px 14px;
+    border-radius:999px;
+    font-family:var(--mono);
+  }
+  .cam-status{ font-size:12px; color:var(--muted); margin-top:8px; text-align:center; }
+
+  .qty-label{ font-size:12px; color:var(--muted); margin:0 0 8px; padding-top:18px; border-top:1px solid rgba(255,255,255,0.07); }
+  .qty-row{ display:flex; align-items:stretch; gap:10px; }
+  .qty-btn{
+    flex:none; width:44px; height:44px;
+    background:rgba(255,255,255,0.05);
+    border:1px solid rgba(255,255,255,0.09);
+    border-radius:50%;
+    color:var(--text);
+    font-size:17px;
+    cursor:pointer;
+    transition:background 0.15s;
+  }
+  .qty-btn:hover{ background:rgba(255,255,255,0.09); }
+  .qty-value{
+    flex:1;
+    background:rgba(255,255,255,0.035);
+    border:1px solid rgba(255,255,255,0.09);
+    border-radius:999px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--mono);
+    font-size:16px;
+  }
+
+  .pending-label{
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:12px; color:var(--muted); margin:18px 0 8px; padding-top:18px;
+    border-top:1px solid rgba(255,255,255,0.07);
+  }
+  .pending-label .clear-link{ color:var(--muted-2); text-decoration:underline; cursor:pointer; }
+  .pending-label .clear-link:hover{ color:var(--muted); }
+  .pending-list{ display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto; }
+  .pending-empty{ color:var(--muted-2); font-size:12px; padding:10px 0; }
+  .pending-row{
+    display:flex; align-items:center; gap:10px;
+    background:rgba(255,255,255,0.035);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:14px;
+    padding:8px 12px;
+  }
+  .pending-row .sku{ flex:1; min-width:0; font-family:var(--mono); font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pending-row .qty{ flex:none; font-family:var(--mono); font-size:12px; color:var(--muted); }
+  .pending-row .remove-btn{
+    flex:none; width:21px; height:21px; border-radius:50%;
+    border:1px solid rgba(255,255,255,0.1);
+    background:transparent;
+    color:var(--muted);
+    cursor:pointer; font-size:13px; line-height:1;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .pending-row .remove-btn:hover{ border-color:var(--red); color:var(--red); }
+
+  .save-btn{
+    width:100%;
+    margin-top:18px;
+    padding:15px 0;
+    border:none;
+    border-radius:var(--radius-md);
+    font-weight:700;
+    font-size:13.5px;
+    cursor:pointer;
+    color:#0b0f10;
+    background:var(--current-accent);
+    box-shadow:0 14px 34px -12px var(--current-accent);
+    transition:filter 0.15s, transform 0.1s, box-shadow 0.15s;
+  }
+  .save-btn:hover{ filter:brightness(1.08); }
+  .save-btn:active{ transform:scale(0.99); }
+  .save-btn:disabled{ opacity:0.35; cursor:default; filter:none; box-shadow:none; }
+
+  .card-footer{
+    text-align:center;
+    font-size:12.5px;
+    color:var(--muted-2);
+    margin-top:18px;
+  }
+  .card-footer .footer-link{
+    color:var(--current-accent);
+    font-weight:700;
+    cursor:pointer;
+  }
+  .card-footer .footer-link:hover{ text-decoration:underline; }
+
+  /* ---------------- history table ---------------- */
+  .history-toolbar{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:16px;
+  }
+  .history-count{ font-size:12.5px; color:var(--muted); }
+  .retry-link{
+    font-size:12.5px;
+    color:var(--red);
+    text-decoration:underline;
+    cursor:pointer;
+  }
+  .retry-link:hover{ color:#f08880; }
+
+  .history-table{
+    width:100%;
+    max-width:920px;
+    border-collapse:collapse;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:18px;
+    overflow:hidden;
+  }
+  .history-table thead th{
+    text-align:left;
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:0.3px;
+    color:var(--muted-2);
+    padding:11px 16px;
+    border-bottom:1px solid var(--border);
+    background:var(--surface-2);
+  }
+  .history-table tbody td{
+    padding:11px 16px;
+    font-size:13px;
+    border-bottom:1px solid var(--border);
+  }
+  .history-table tbody tr:last-child td{ border-bottom:none; }
+  .history-table tbody tr:hover{ background:var(--surface-2); }
+  .history-table .sku-cell{ font-family:var(--mono); }
+  .history-table .time-cell{ color:var(--muted); white-space:nowrap; }
+  .badge{
+    display:inline-block;
+    font-size:10.5px;
+    font-weight:700;
+    letter-spacing:0.3px;
+    padding:3px 8px;
+    border-radius:5px;
+  }
+  .state-dot{ display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+  .state-dot.ok{ background:var(--green); }
+  .state-dot.pending{ background:var(--muted-2); }
+  .state-dot.fail{ background:var(--red); }
+  .log-empty{
+    color:var(--muted);
+    font-size:13px;
+    text-align:center;
+    padding:36px 0;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:18px;
+    max-width:920px;
+  }
+
+  @media (max-width: 760px){
+    .shell{ flex-direction:column; }
+    aside{
+      order:2;
+      width:100%;
+      flex-direction:row;
+      align-items:center;
+      padding:8px 10px;
+      border-right:none;
+      border-top:1px solid rgba(255,255,255,0.07);
+      overflow:visible;
+    }
+    aside::before{ display:none; }
+    .brand{ display:none; }
+    nav{ flex-direction:row; flex:1; gap:4px; }
+    .nav-btn{ flex:1; flex-direction:column; justify-content:center; gap:3px; padding:9px 4px; font-size:10px; text-align:center; border-radius:12px; }
+    .nav-btn-main{ flex-direction:column; gap:3px; }
+    .nav-arrow{ display:none; }
+    .nav-divider{ width:1px; height:26px; margin:0 4px; background:linear-gradient(180deg, transparent, rgba(255,255,255,0.14), transparent); }
+    .sidebar-status{ display:none; }
+    main{ padding:24px 18px; }
+    #historyWrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    .history-table{ min-width:560px; }
+    .history-table thead th, .history-table tbody td{ padding:9px 12px; font-size:12px; white-space:nowrap; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <aside>
+    <div class="brand">
+      <img class="brand-mark" src="data:image/png;base64,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" alt="Bullane logo">
+      <span class="brand-name">Bullane Scan</span>
+    </div>
+
+    <nav>
+      <div class="nav-btn" id="navOut" data-mode="OUT">
+        <span class="nav-btn-main">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
+          <span class="label">OUT</span>
+        </span>
+        <svg class="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+      </div>
+      <div class="nav-btn" id="navIn" data-mode="IN">
+        <span class="nav-btn-main">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg>
+          <span class="label">IN</span>
+        </span>
+        <svg class="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+      </div>
+      <div class="nav-btn" id="navRto" data-mode="RTO">
+        <span class="nav-btn-main">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+          <span class="label">RTO</span>
+        </span>
+        <svg class="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+      </div>
+      <div class="nav-divider"></div>
+      <div class="nav-btn" id="navHistory">
+        <span class="nav-btn-main">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+          <span class="label">History</span>
+        </span>
+        <svg class="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+      </div>
+    </nav>
+
+    <div class="sidebar-status" id="statusEl">
+      <span class="dot"></span><span id="statusText">offline</span>
+    </div>
+  </aside>
+
+  <main>
+    <!-- ============================================================ -->
+    <!-- CONFIGURE THIS: paste your Apps Script Web App URL below     -->
+    <!-- ============================================================ -->
+    <script>
+      const WEBAPP_URL = "PASTE_YOUR_WEB_APP_URL_HERE";
+    </script>
+
+    <div class="config-warning" id="configWarning">
+      Not connected yet. Open this file in a text editor, find <code>WEBAPP_URL</code> near the top, and paste in the URL from your Apps Script deployment.
+    </div>
+
+    <div id="scanView" class="content-cap">
+      <h1 class="hero-title" id="heroTitle">Scan RTO</h1>
+      <p class="hero-sub" id="heroSub">Log a returned SKU into the sheet.</p>
+
+      <div class="card">
+        <div class="card-rim"></div>
+        <div class="card-shine"></div>
+        <div class="field-label">Scan or search SKU</div>
+        <div class="sku-row">
+          <input id="skuInput" type="text" placeholder="e.g. 01SM-M" autocomplete="off">
+          <button class="scan-btn" id="scanToggle" title="Scan with camera">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M4 8V5a1 1 0 0 1 1-1h3"/><path d="M20 8V5a1 1 0 0 0-1-1h-3"/>
+              <path d="M4 16v3a1 1 0 0 0 1 1h3"/><path d="M20 16v3a1 1 0 0 1-1 1h-3"/>
+            </svg>
+          </button>
+          <button class="torch-btn" id="torchToggle" title="Flashlight" style="display:none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 2h6l-1 7h3l-8 13 2-9H8z"/>
+            </svg>
+          </button>
+        </div>
+
+        <div id="cameraPanel">
+          <div id="readerWrap" style="position:relative;">
+            <div id="reader"></div>
+            <div id="scanFlash"></div>
+          </div>
+          <div class="cam-status" id="camStatus">Point the camera at a barcode</div>
+        </div>
+
+        <div class="qty-label">Quantity</div>
+        <div class="qty-row">
+          <button class="qty-btn" id="qtyMinus">&minus;</button>
+          <div class="qty-value" id="qtyValue">1</div>
+          <button class="qty-btn" id="qtyPlus">+</button>
+        </div>
+
+        <div class="pending-label">
+          <span id="pendingLabelText">Pending (0)</span>
+          <span class="clear-link" id="clearPending">clear</span>
+        </div>
+        <div class="pending-list" id="pendingList">
+          <div class="pending-empty">Scan a few, then save them together.</div>
+        </div>
+
+        <button class="save-btn" id="saveBtn" disabled>Save RTO</button>
+      </div>
+      <div class="card-footer">Made a mistake? <span class="footer-link" id="gotoHistory">View history</span></div>
+    </div>
+
+    <div id="historyView" style="display:none;">
+      <h1 class="page-title">History</h1>
+      <p class="page-sub">Every scan that's been sent to the sheet.</p>
+      <div class="history-toolbar">
+        <span class="history-count" id="historyCount">0 entries</span>
+        <span class="retry-link" id="retryFailed" style="display:none;">Retry failed</span>
+      </div>
+      <div id="historyWrap">
+        <div class="log-empty">No entries yet</div>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script>
+  const configured = WEBAPP_URL && WEBAPP_URL.indexOf("http") === 0;
+  document.getElementById('configWarning').style.display = configured ? 'none' : 'block';
+
+  const statusEl = document.getElementById('statusEl');
+  const statusText = document.getElementById('statusText');
+  function refreshStatus(){
+    const online = configured && navigator.onLine;
+    statusEl.classList.toggle('online', online);
+    statusText.textContent = online ? 'online' : 'offline';
+  }
+  window.addEventListener('online', refreshStatus);
+  window.addEventListener('offline', refreshStatus);
+  refreshStatus();
+
+  // ---------- mode / view state ----------
+  const MODES = {
+    IN:  { color: 'var(--in)',  dim: 'var(--in-dim)',  navClass: 'active-in'  },
+    OUT: { color: 'var(--out)', dim: 'var(--out-dim)', navClass: 'active-out' },
+    RTO: { color: 'var(--rto)', dim: 'var(--rto-dim)', navClass: 'active-rto' }
+  };
+  let mode = 'RTO';
+  let view = 'SCAN'; // 'SCAN' or 'HISTORY'
+
+  const heroTitle = document.getElementById('heroTitle');
+  const heroSub = document.getElementById('heroSub');
+  const MODE_COPY = {
+    IN:  'Log SKUs coming into stock.',
+    OUT: 'Log SKUs going out.',
+    RTO: 'Log a returned SKU into the sheet.'
+  };
+  const saveBtn = document.getElementById('saveBtn');
+  const navOut = document.getElementById('navOut');
+  const navIn = document.getElementById('navIn');
+  const navRto = document.getElementById('navRto');
+  const navHistory = document.getElementById('navHistory');
+  const scanView = document.getElementById('scanView');
+  const historyView = document.getElementById('historyView');
+  const skuInput = document.getElementById('skuInput');
+  // Touch phones/tablets don't need the field auto-focused on every mode
+  // switch — desktop does, so a scanner gun can type into it right away,
+  // but on a phone that focus is exactly what pops the keyboard up
+  // unexpectedly when you're just tapping between OUT / IN / RTO.
+  const isTouchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+
+  function applyMode(){
+    const m = MODES[mode];
+    document.documentElement.style.setProperty('--current-accent', 'var(--' + mode.toLowerCase() + ')');
+    heroTitle.textContent = 'Scan ' + mode;
+    heroTitle.style.color = m.color;
+    heroSub.textContent = MODE_COPY[mode];
+    saveBtn.style.background = m.color;
+    renderPending();
+    if(view === 'SCAN' && !isTouchDevice) skuInput.focus();
+  }
+
+  function updateView(){
+    [navOut, navIn, navRto, navHistory].forEach(n => n.classList.remove('active-in','active-out','active-rto','active-history'));
+
+    if(view === 'HISTORY'){
+      scanView.style.display = 'none';
+      historyView.style.display = 'block';
+      navHistory.classList.add('active-history');
+    } else {
+      scanView.style.display = 'block';
+      historyView.style.display = 'none';
+      document.getElementById('nav' + mode[0] + mode.slice(1).toLowerCase()).classList.add(MODES[mode].navClass);
+    }
+  }
+
+  navOut.addEventListener('click', () => { mode = 'OUT'; view = 'SCAN'; applyMode(); updateView(); });
+  navIn.addEventListener('click', () => { mode = 'IN'; view = 'SCAN'; applyMode(); updateView(); });
+  navRto.addEventListener('click', () => { mode = 'RTO'; view = 'SCAN'; applyMode(); updateView(); });
+  navHistory.addEventListener('click', () => { view = 'HISTORY'; updateView(); });
+  document.getElementById('gotoHistory').addEventListener('click', () => { view = 'HISTORY'; updateView(); });
+
+  // ---------- quantity ----------
+  const qtyValue = document.getElementById('qtyValue');
+  let qty = 1;
+  document.getElementById('qtyMinus').addEventListener('click', () => {
+    qty = Math.max(1, qty - 1);
+    qtyValue.textContent = qty;
+  });
+  document.getElementById('qtyPlus').addEventListener('click', () => {
+    qty = qty + 1;
+    qtyValue.textContent = qty;
+  });
+
+  // ---------- pending queue (scanned but not yet saved) ----------
+  const pendingList = document.getElementById('pendingList');
+  const pendingLabelText = document.getElementById('pendingLabelText');
+  const clearPending = document.getElementById('clearPending');
+  const queues = { IN: [], OUT: [], RTO: [] };
+
+  function renderPending(){
+    const q = queues[mode];
+    pendingLabelText.textContent = 'Pending (' + q.length + ')';
+    saveBtn.textContent = 'Save ' + mode + (q.length ? ' (' + q.length + ')' : '') + (q.length ? '  \u2192' : '');
+    saveBtn.disabled = q.length === 0;
+
+    if(q.length === 0){
+      pendingList.innerHTML = '<div class="pending-empty">Scan a few, then save them together.</div>';
+      return;
+    }
+    pendingList.innerHTML = q.map((item, i) => `
+      <div class="pending-row">
+        <span class="sku">${item.sku}</span>
+        <span class="qty">x${item.qty}</span>
+        <button class="remove-btn" data-index="${i}">&times;</button>
+      </div>
+    `).join('');
+    pendingList.querySelectorAll('.remove-btn').forEach(btn => {
+      btn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        const idx = parseInt(btn.getAttribute('data-index'), 10);
+        queues[mode].splice(idx, 1);
+        renderPending();
+      });
+    });
+  }
+
+  clearPending.addEventListener('click', () => {
+    queues[mode] = [];
+    renderPending();
+  });
+
+  // ---------- history (items that have actually been saved) ----------
+  const historyWrap = document.getElementById('historyWrap');
+  const historyCount = document.getElementById('historyCount');
+  const retryFailed = document.getElementById('retryFailed');
+  let entries = [];
+
+  function renderLog(){
+    historyCount.textContent = entries.length + (entries.length === 1 ? ' entry' : ' entries');
+    const failedCount = entries.filter(e => e.state === 'fail').length;
+    retryFailed.style.display = failedCount > 0 ? 'inline' : 'none';
+    retryFailed.textContent = 'Retry failed (' + failedCount + ')';
+
+    if(entries.length === 0){
+      historyWrap.innerHTML = '<div class="log-empty">No entries yet</div>';
+      return;
+    }
+    const rows = entries.map(e => `
+      <tr>
+        <td><span class="badge" style="background:${MODES[e.type].dim}; color:${MODES[e.type].color}">${e.type}</span></td>
+        <td class="sku-cell">${e.sku}</td>
+        <td>${e.qty}</td>
+        <td class="time-cell">${e.time}</td>
+        <td><span class="state-dot ${e.state}"></span>${e.state === 'ok' ? 'Saved' : e.state === 'fail' ? 'Failed' : 'Sending'}</td>
+      </tr>
+    `).join('');
+    historyWrap.innerHTML = `
+      <table class="history-table">
+        <thead>
+          <tr><th>Type</th><th>SKU</th><th>Qty</th><th>Time</th><th>Status</th></tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+
+  function addHistoryEntry(sku, qtyVal, type){
+    const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    const entry = { sku, qty: qtyVal, type, time, state: 'pending' };
+    entries.unshift(entry);
+    if(entries.length > 300) entries.pop();
+    return entry;
+  }
+
+  // Sends every item in one single request instead of one request per item.
+  // Firing them separately let Google receive several writes at once, which
+  // could race and silently drop rows (some scans "sent" but never landed
+  // in the sheet). Bundling them into one request removes that risk.
+  function sendBatchToSheet(entryList, type){
+    if(!configured){
+      entryList.forEach(e => { e.state = 'fail'; });
+      renderLog();
+      return;
+    }
+    const items = entryList.map(e => ({ sku: e.sku, qty: e.qty }));
+    fetch(WEBAPP_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ type, items })
+    }).then(() => {
+      entryList.forEach(e => { e.state = 'ok'; });
+      renderLog();
+    }).catch(() => {
+      entryList.forEach(e => { e.state = 'fail'; });
+      renderLog();
+    });
+  }
+
+  // Failed entries (e.g. saved while offline) stay in History marked "Failed"
+  // rather than disappearing, so nothing has to be re-scanned by hand —
+  // this resends them, grouped back by type, in one request per type.
+  retryFailed.addEventListener('click', () => {
+    const failed = entries.filter(e => e.state === 'fail');
+    if(failed.length === 0) return;
+    failed.forEach(e => { e.state = 'pending'; });
+    renderLog();
+    ['IN', 'OUT', 'RTO'].forEach(t => {
+      const group = failed.filter(e => e.type === t);
+      if(group.length > 0) sendBatchToSheet(group, t);
+    });
+  });
+
+  // ---------- scan (adds to pending queue, does NOT save yet) ----------
+  function queueScan(){
+    const val = skuInput.value.trim();
+    if(!val) return;
+    clearTimeout(idleTimer);
+    queues[mode].push({ sku: val, qty });
+    renderPending();
+    skuInput.value = '';
+    qty = 1;
+    qtyValue.textContent = qty;
+    // Don't refocus the text field while the camera is open on mobile — that's
+    // exactly what pops the on-screen keyboard up over the camera view.
+    if(!cameraPanel.classList.contains('open')){
+      skuInput.focus();
+    }
+  }
+  skuInput.addEventListener('keydown', (ev) => {
+    if(ev.key === 'Enter'){ queueScan(); }
+  });
+
+  // Scanner guns type far faster than a human and don't always send Enter/Tab
+  // reliably. If typing suddenly goes quiet after a burst of characters, treat
+  // that as "scan finished" so nothing gets left behind or merged into the
+  // next scan.
+  let idleTimer = null;
+  let lastKeyTime = 0;
+  skuInput.addEventListener('input', () => {
+    const now = Date.now();
+    const gap = now - lastKeyTime;
+    lastKeyTime = now;
+    clearTimeout(idleTimer);
+    if(skuInput.value.trim().length === 0) return;
+    // Only auto-submit for scanner-speed bursts (well under human typing speed).
+    // Manual typing still needs Enter, so a paused search doesn't fire early.
+    if(gap < 40){
+      idleTimer = setTimeout(() => {
+        if(skuInput.value.trim().length > 0){ queueScan(); }
+      }, 120);
+    }
+  });
+
+  // ---------- save (sends everything in the current mode's queue, as ONE request) ----------
+  function saveBatch(){
+    const q = queues[mode];
+    if(q.length === 0) return;
+    const newEntries = q.map(item => addHistoryEntry(item.sku, item.qty, mode));
+    renderLog();
+    sendBatchToSheet(newEntries, mode);
+    queues[mode] = [];
+    renderPending();
+  }
+  saveBtn.addEventListener('click', saveBatch);
+  document.addEventListener('click', (ev) => {
+    const panel = document.getElementById('cameraPanel');
+    if(view === 'SCAN' && !isTouchDevice && !panel.classList.contains('open')) skuInput.focus();
+  });
+
+  // ---------- camera ----------
+  let html5QrCode = null;
+  let camRunning = false;
+  const scanToggle = document.getElementById('scanToggle');
+  const cameraPanel = document.getElementById('cameraPanel');
+  const camStatus = document.getElementById('camStatus');
+  const scanFlash = document.getElementById('scanFlash');
+  const torchToggle = document.getElementById('torchToggle');
+  let lastCamValue = '';
+  let lastCamTime = 0;
+  let camLocked = false; // brief pause right after a hit so a moving barcode isn't half-read
+  let torchOn = false;
+  let cameraDevices = [];   // list of {id, label} from the phone itself
+  let cameraIndex = 0;      // which one in that list is active
+  let camerasLoaded = false;
+
+  function flashScan(text){
+    scanFlash.innerHTML = '<span class="flash-label">' + text + ' added</span>';
+    scanFlash.classList.add('show');
+    setTimeout(() => { scanFlash.classList.remove('show'); }, 450);
+  }
+
+  function getActiveVideoTrack(){
+    const videoEl = document.querySelector('#reader video');
+    if(!videoEl || !videoEl.srcObject) return null;
+    const tracks = videoEl.srcObject.getVideoTracks ? videoEl.srcObject.getVideoTracks() : [];
+    return tracks && tracks[0] ? tracks[0] : null;
+  }
+
+  function setupTorchButton(){
+    const track = getActiveVideoTrack();
+    const caps = (track && track.getCapabilities) ? track.getCapabilities() : {};
+    if(caps && caps.torch){
+      torchToggle.style.display = 'flex';
+    } else {
+      torchToggle.style.display = 'none';
+    }
+  }
+
+  torchToggle.addEventListener('click', async () => {
+    const track = getActiveVideoTrack();
+    if(!track) return;
+    try {
+      torchOn = !torchOn;
+      await track.applyConstraints({ advanced: [{ torch: torchOn }] });
+      torchToggle.classList.toggle('active', torchOn);
+    } catch(e){
+      camStatus.textContent = 'Could not toggle flashlight';
+    }
+  });
+
+  scanToggle.addEventListener('click', () => {
+    if(camRunning){ stopCamera(); } else { openCamera(); }
+  });
+
+  // Some phones report front/back (facingMode) incorrectly, which is why
+  // the camera kept snapping back to front. Instead of trusting that label,
+  // we ask the phone for its actual list of cameras and select one by its
+  // specific device ID — that can't be misreported the way facingMode can.
+  // Crucially, this list is only accurate AFTER camera permission has been
+  // granted at least once — asking beforehand is what caused the phone to
+  // report just one vague camera entry and fall back to the unreliable
+  // facingMode guess. So this is only called after a successful open.
+  function loadCameraList(){
+    return Html5Qrcode.getCameras().then((devices) => {
+      cameraDevices = devices || [];
+      camerasLoaded = true;
+      if(cameraDevices.length > 1){
+        const backIndex = cameraDevices.findIndex(d => /back|rear|environment/i.test(d.label || ''));
+        cameraIndex = backIndex >= 0 ? backIndex : 0;
+      } else {
+        cameraIndex = 0;
+      }
+    }).catch(() => {
+      cameraDevices = [];
+      camerasLoaded = true;
+    });
+  }
+
+  function onCameraDecode(decodedText){
+    if(camLocked) return; // ignore decodes for a moment right after a confirmed scan
+    const now = Date.now();
+    if(decodedText === lastCamValue && now - lastCamTime < 1500) return;
+    lastCamValue = decodedText;
+    lastCamTime = now;
+    skuInput.value = decodedText;
+    queueScan();
+    flashScan(decodedText);
+    camStatus.textContent = 'Move to the next barcode';
+    if(navigator.vibrate) navigator.vibrate(80);
+    camLocked = true;
+    setTimeout(() => { camLocked = false; camStatus.textContent = 'Point the camera at a barcode'; }, 500);
+  }
+
+  function startWithDevice(config){
+    const target = (cameraDevices[cameraIndex] && cameraDevices[cameraIndex].id)
+      ? cameraDevices[cameraIndex].id   // exact device — reliable, used once we have a real list
+      : { facingMode: "environment" };  // first-ever open, before we have permission to enumerate
+    return html5QrCode.start(target, config, onCameraDecode, () => {});
+  }
+
+  function openCamera(){
+    cameraPanel.classList.add('open');
+    scanToggle.classList.add('active');
+    skuInput.blur(); // close the on-screen keyboard if it was already open
+    if(typeof Html5Qrcode === 'undefined'){
+      camStatus.textContent = 'Camera library failed to load. Check your connection.';
+      return;
+    }
+    html5QrCode = new Html5Qrcode("reader");
+
+    const scanConfig = {
+      fps: 10,
+      qrbox: { width: 280, height: 140 },
+      // Don't ask for a huge camera resolution — decoding a smaller frame
+      // is much faster on lower-end phones and barcodes don't need 4K.
+      // Also ask for continuous autofocus, since some phones default web
+      // camera access to slower single-shot focus.
+      videoConstraints: {
+        width: { ideal: 640 },
+        height: { ideal: 480 },
+        advanced: [{ focusMode: "continuous" }]
+      },
+      // Use the phone's own built-in barcode reader when it has one
+      // (most modern Android phones do) instead of decoding every frame
+      // in JavaScript — this is the biggest speed difference between
+      // devices. Falls back to the normal JS scanner automatically on
+      // phones that don't support it (including iPhone).
+      experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+      // Skip the horizontal-flip check every frame (barcodes are never
+      // mirrored in normal use) — small but free speed gain.
+      disableFlip: true,
+      // Only look for the kinds of barcode you actually use, not QR
+      // codes / data matrix / PDF417 etc. Fewer formats to try per frame
+      // means a faster decode, especially on phones using the slower
+      // JS fallback instead of the native reader.
+      formatsToSupport: (typeof Html5QrcodeSupportedFormats !== 'undefined') ? [
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.CODE_93,
+        Html5QrcodeSupportedFormats.CODABAR,
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.ITF,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E
+      ] : undefined
+    };
+
+    const nativeDetectorAvailable = (typeof BarcodeDetector !== 'undefined');
+
+    // startWithDevice already picks the exact device if we have the real
+    // list, or a soft "environment" hint on the very first-ever open
+    // (before permission is granted and the list is trustworthy).
+    startWithDevice(scanConfig).then(() => {
+      camRunning = true;
+      camStatus.textContent = nativeDetectorAvailable ? 'Point the camera at a barcode (fast mode)' : 'Point the camera at a barcode';
+      setTimeout(setupTorchButton, 300); // small delay so the video track is fully ready
+
+      // Now that a stream is open, permission is granted — if we didn't
+      // already have the real camera list, fetch it now (labels are only
+      // reliable post-permission), then verify/correct to the rear camera.
+      const listPromise = camerasLoaded ? Promise.resolve() : loadCameraList();
+      listPromise.then(() => {
+        if(!skipAutoCorrectOnce){
+          setTimeout(confirmBackFacing, 350);
+        }
+        skipAutoCorrectOnce = false;
+      });
+    }).catch((err) => {
+      camStatus.textContent = 'Could not access camera: ' + err;
+    });
+  }
+
+  let autoFlipAttempts = 0;
+  let skipAutoCorrectOnce = false;
+  function confirmBackFacing(){
+    if(!camRunning || cameraDevices.length < 2) return;
+    const track = getActiveVideoTrack();
+    const settings = (track && track.getSettings) ? track.getSettings() : {};
+    if(settings && settings.facingMode === 'user' && autoFlipAttempts < cameraDevices.length - 1){
+      autoFlipAttempts++;
+      cameraIndex = (cameraIndex + 1) % cameraDevices.length;
+      camStatus.textContent = 'Switching to back camera...';
+      html5QrCode.stop().then(() => {
+        html5QrCode.clear();
+        camRunning = false;
+        openCamera();
+      }).catch(() => {});
+    } else {
+      autoFlipAttempts = 0; // settled on a camera, reset for next time the camera is opened
+    }
+  }
+
+  function stopCamera(){
+    if(html5QrCode && camRunning){
+      html5QrCode.stop().then(() => {
+        html5QrCode.clear();
+        camRunning = false;
+        cameraPanel.classList.remove('open');
+        scanToggle.classList.remove('active');
+        torchToggle.style.display = 'none';
+        torchToggle.classList.remove('active');
+        torchOn = false;
+      }).catch(() => {});
+    } else {
+      cameraPanel.classList.remove('open');
+      scanToggle.classList.remove('active');
+      torchToggle.style.display = 'none';
+      torchToggle.classList.remove('active');
+      torchOn = false;
+    }
+  }
+
+  applyMode();
+  updateView();
+  renderPending();
+  renderLog();
+  if(!isTouchDevice) skuInput.focus(); // desktop only — a scanner gun can start typing right away
+</script>
+</body>
+</html>
