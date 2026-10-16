@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TrackFlow — Order &amp; Tracking Sync</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%238b7cf6'/><stop offset='1' stop-color='%234fd1c4'/></linearGradient></defs><rect width='64' height='64' rx='14' fill='url(%23g)'/><rect x='13' y='16' width='6' height='32' rx='1.5' fill='%23fff'/><rect x='24' y='16' width='4' height='32' rx='1.5' fill='%23fff'/><rect x='33' y='16' width='8' height='32' rx='1.5' fill='%23fff'/><rect x='46' y='16' width='5' height='32' rx='1.5' fill='%23fff'/><rect x='8' y='30' width='48' height='4' rx='2' fill='%23ef4444'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -131,7 +132,7 @@
   }
 
   /* ---- Scan view ---- */
-  .scan-card{padding:32px;min-height:340px;position:relative;overflow:hidden;transition:background .2s ease,border-color .2s ease;}
+  .scan-card{padding:20px 26px;min-height:260px;position:relative;overflow:hidden;transition:background .2s ease,border-color .2s ease;}
   .scan-card.other-mode{
     border-color:rgba(124,108,246,0.5);
     background:linear-gradient(180deg, rgba(124,108,246,0.14), var(--glass-strong) 60%);
@@ -148,18 +149,32 @@
   .scan-card.other-mode .mode-flag{display:inline-block;}
   .scan-prompt{
     display:inline-block;font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;
-    padding:6px 14px;border-radius:999px;color:#fff;background:var(--grad-order);margin-bottom:16px;
+    padding:6px 14px;border-radius:999px;color:#fff;background:var(--grad-order);margin-bottom:10px;
     transition:background .15s ease;
   }
   .scan-prompt.tracking{background:var(--grad-tracking);}
   .scan-input{
-    width:100%;font-size:26px;font-weight:600;
+    width:100%;font-size:22px;font-weight:600;
     background:rgba(255,255,255,0.6);border:2px solid rgba(255,255,255,0.8);border-radius:var(--radius-md);
-    color:var(--text);padding:16px 18px;letter-spacing:.02em;outline:none;
+    color:var(--text);padding:12px 16px;letter-spacing:.02em;outline:none;
     box-shadow:0 0 0 0 rgba(255,157,108,0);transition:box-shadow .15s ease,border-color .15s ease;
   }
   .scan-input:focus{border-color:#ff9d6c;box-shadow:0 0 0 4px rgba(255,157,108,0.22);}
   .scan-input.tracking:focus{border-color:#4f8ef7;box-shadow:0 0 0 4px rgba(79,142,247,0.2);}
+  .scan-top{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-right:110px;}
+  .scan-top .scan-prompt{margin-bottom:0;}
+  .track-only-btn{display:none;margin-left:auto;font-size:12px;padding:6px 14px;}
+  .scan-card.other-mode .track-only-btn{display:inline-block;}
+  .track-only-btn.active{background:linear-gradient(135deg,#7c6cf5,#4f8ef7);color:#fff;border-color:transparent;}
+  .other-only{display:none;}
+  .scan-card.other-mode .other-only{display:block;}
+  .box-label{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-dim);margin:2px 0 5px;}
+  .box-label span{font-weight:500;text-transform:none;letter-spacing:0;color:var(--text-faint);}
+  .scan-col{min-width:0;}
+  .scan-card.other-mode .scan-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
+  .scan-card.other-mode .scan-input{font-size:18px;}
+  @media (max-width:760px){ .scan-card.other-mode .scan-row{grid-template-columns:1fr;} }
+  .scan-input[readonly]{background:rgba(124,108,246,0.10);border-color:rgba(124,108,246,0.35);}
   .scan-hint{margin-top:10px;font-size:11px;color:var(--text-faint);}
   .pending-chip{
     display:inline-flex;align-items:center;gap:6px;margin-top:14px;font-size:12px;color:var(--text-dim);
@@ -201,6 +216,7 @@
   .badge.regular{background:rgba(79,142,247,.14);color:#2563eb;}
   .badge.other{background:rgba(124,108,246,.16);color:#6d28d9;}
   .badge.scanning{background:var(--amber-bg);color:#b45309;}
+  .badge.waiting{background:rgba(124,108,246,.16);color:#6d28d9;}
   .badge.packed{background:rgba(79,142,247,.16);color:#1d4ed8;}
 
   /* ---- Searchable dropdown (combobox) ---- */
@@ -218,6 +234,10 @@
   .combo-item{padding:9px 13px;font-size:13px;cursor:pointer;}
   .combo-item:hover,.combo-item.highlight{background:rgba(124,108,246,.12);}
   .combo-empty{padding:9px 13px;font-size:12px;color:var(--text-faint);}
+  .waiting-pill{display:none;margin-bottom:14px;padding:9px 14px;border-radius:12px;background:var(--amber-bg);color:#b45309;font-size:13px;font-weight:700;cursor:pointer;width:fit-content;}
+  .waiting-pill.show{display:block;}
+  .change-tp-btn{font-size:11px;padding:4px 10px;}
+  .tp-select{font-size:12px;padding:5px 8px;border-radius:8px;border:1px solid var(--glass-border);background:#fff;max-width:160px;}
   .combo input.invalid{border-color:var(--error);box-shadow:0 0 0 3px rgba(220,38,38,0.14);}
   .scan-hint.invalid{color:var(--error);font-weight:700;}
   .field-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;font-weight:700;display:block;margin-bottom:6px;}
@@ -267,6 +287,143 @@
   .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;}
 
   ::placeholder{color:var(--text-faint);}
+  /* Keep tables inside their cards */
+.glass-table-wrap{overflow-x:auto;}
+.glass-table-wrap table{min-width:100%;}
+.resolve-hold-btn,
+.close-btn{white-space:nowrap;padding:7px 14px;}
+.added-cell{white-space:nowrap;}
+  /* ---------- Mobile ---------- */
+@media (max-width: 768px){
+  body{
+    flex-direction:column;
+    gap:14px;
+    padding:12px;
+    min-height:100dvh;
+  }
+
+  /* Sidebar -> top header */
+  .sidebar{
+    width:100%;
+    height:auto;
+    position:static;
+    padding:14px;
+    border-radius:20px;
+  }
+  .brand{
+    padding:0 2px 10px;
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  .brand .name{font-size:20px;}
+
+  /* Nav becomes a horizontal 4-tab row */
+  .nav{
+    flex-direction:row;
+    gap:6px;
+    flex:none;
+  }
+  .nav-item{
+    flex:1;
+    flex-direction:column;
+    justify-content:center;
+    gap:4px;
+    padding:8px 4px;
+    font-size:11px;
+    text-align:center;
+    min-width:0;
+  }
+  .nav-item .dot{display:none;}
+  .nav-item .label{flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+  .nav-item .num{font-size:10px;padding:1px 7px;}
+
+  /* Sidebar footer -> compact wrapped row */
+  .sidebar-foot{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:6px 12px;
+    margin-top:10px;
+    padding-top:10px;
+  }
+  .conn{margin-bottom:0;}
+  .stat-line{margin-top:0;gap:5px;}
+  .settings-btn{
+    width:auto;
+    margin-top:0 !important;
+    padding:7px 12px;
+  }
+
+  /* Main */
+  .main{max-width:100%;width:100%;min-width:0;}
+  .view-head{flex-wrap:wrap;margin-bottom:16px;}
+  .view-head h1{font-size:22px;}
+  .view-head > .btn{align-self:flex-start;}
+
+  /* Scan card */
+  .scan-card{padding:16px;min-height:220px;}
+  .scan-top{padding-right:0;flex-wrap:wrap;}
+  .mode-flag{position:static;margin-bottom:8px;}
+  .scan-card.other-mode .mode-flag{display:inline-block;}
+  .scan-input,
+  .scan-card.other-mode .scan-input{
+    font-size:16px;          /* stops iOS zoom-on-focus */
+    padding:12px 14px;
+  }
+  .scan-card.other-mode .scan-row{grid-template-columns:1fr;}
+  .track-only-btn{margin-left:0;}
+  .toggle-row{flex-wrap:wrap;}
+
+  /* Error overlay */
+  .error-overlay{padding:10px;}
+  .error-box{padding:16px;}
+  .error-actions{flex-wrap:wrap;}
+  .error-actions .btn{flex:1;}
+
+  /* Inputs: 16px prevents iOS auto-zoom */
+  .combo input,
+  .search-input,
+  .modal input[type=text],
+  #view-hold input,
+  #view-hold textarea{font-size:16px !important;}
+  .search-input{max-width:100%;}
+
+  /* Hold form: stack the Note + button row (inline grid style) */
+  #view-hold .sync-panel > div[style*="auto;"]{
+    grid-template-columns:1fr !important;
+  }
+  #view-hold .sync-panel > div[style*="auto;"] .btn{width:100%;}
+
+  /* Sync */
+  .stat-grid{grid-template-columns:1fr;gap:10px;margin-bottom:16px;}
+  .stat-card{padding:14px 18px;}
+  .sync-panel{padding:16px;}
+  .sync-panel .row .btn{width:100%;}
+
+  /* Tables scroll sideways instead of breaking layout */
+  .glass-table-wrap{padding:6px;}
+  table{
+    display:block;
+    max-width:100%;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    white-space:nowrap;
+  }
+  thead th, tbody td{padding:9px 10px;}
+
+  /* Modal */
+  .modal{padding:20px;width:92vw;}
+  .modal-actions .btn{flex:1;}
+}
+
+/* Small phones */
+@media (max-width: 400px){
+  body{padding:8px;}
+  .nav-item{font-size:10px;}
+  .view-head h1{font-size:20px;}
+  .btn{padding:9px 14px;}
+}
 </style>
 </head>
 <body>
@@ -322,6 +479,8 @@
       <button class="btn ghost" id="newSessionBtn">New session</button>
     </div>
 
+    <div class="waiting-pill" id="waitingPill"></div>
+
     <div class="glass-card" style="padding:16px 20px;margin-bottom:16px;">
       <label class="field-label">Third Party *</label>
       <div class="combo" style="max-width:320px;">
@@ -338,9 +497,22 @@
 
     <div class="scan-card glass-card" id="scanCard">
       <div class="mode-flag">Other mode</div>
-      <div class="scan-prompt" id="scanPromptLabel">Scan Order ID</div>
-      <input type="text" class="scan-input mono" id="scanInput" placeholder="Waiting for scan…" autocomplete="off" autofocus>
-      <div class="scan-hint">Order IDs start with <b>JE</b>. Scanner input is read on Enter.</div>
+      <div class="scan-top">
+        <div class="scan-prompt" id="scanPromptLabel">Scan Order ID</div>
+        <button class="btn ghost track-only-btn" id="trackOnlyBtn">Tracking only</button>
+      </div>
+      <div class="scan-row">
+        <div class="scan-col">
+          <div class="box-label other-only">Order ID</div>
+          <input type="text" class="scan-input mono" id="scanInput" placeholder="Waiting for scan…" autocomplete="off" autofocus>
+        </div>
+        <div class="scan-col track-wrap other-only">
+          <div class="box-label">Tracking ID <span>(only tracking? scan here)</span></div>
+          <input type="text" class="scan-input mono tracking" id="trackInput" placeholder="Tracking ID…" autocomplete="off">
+        </div>
+      </div>
+      <button class="btn ghost" id="redoOrderBtn" style="display:none;margin-top:10px;">Clear Order ID (Esc)</button>
+      <div class="scan-hint" id="scanHint">Order IDs start with <b>JE</b>. Scanner input is read on Enter.</div>
       <div class="pending-chip" id="pendingChip" style="display:none;">Order ID captured — <b class="mono" id="pendingOrderText"></b> — now scan its tracking ID</div>
 
       <div class="error-overlay" id="errorOverlay">
@@ -365,7 +537,7 @@
       </div>
       <div class="glass-card glass-table-wrap">
         <table>
-          <thead><tr><th>Order ID</th><th>Tracking ID</th><th>Third Party</th><th>Scanned</th><th>Source</th><th>Status</th></tr></thead>
+          <thead><tr><th>Order ID</th><th>Tracking ID</th><th>Third Party</th><th>Scanned</th><th>Source</th><th>Status</th><th></th></tr></thead>
           <tbody id="sessionTableBody" class="mono"></tbody>
         </table>
         <div class="empty-state" id="sessionEmpty">No scans yet. Scan an Order ID to begin.</div>
@@ -427,7 +599,7 @@
 
     <div class="glass-card glass-table-wrap">
       <table>
-        <thead><tr><th>Order ID</th><th>Tracking ID</th><th>Scanned</th><th>Source</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Order ID</th><th>Tracking ID</th><th>Third Party</th><th>Scanned</th><th>Source</th><th>Status</th><th></th></tr></thead>
         <tbody id="reviewTableBody" class="mono"></tbody>
       </table>
       <div class="empty-state" id="reviewEmpty">Nothing to review.</div>
@@ -439,53 +611,60 @@
     <div class="view-head">
       <div>
         <h1>Hold List</h1>
-        <div class="sub">Order IDs or Tracking IDs to pull aside. Scanning one stops with an alert.</div>
+        <div class="sub">Order IDs or Tracking IDs to pull aside. Scanning one stops with an alert. Waiting = label scanned, not packed yet.</div>
       </div>
-      <button class="btn ghost" id="refreshHoldBtn">Refresh</button>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn primary" id="startPackingBtn">Start packing</button>
+        <button class="btn ghost" id="refreshHoldBtn">Refresh</button>
+      </div>
     </div>
 
     <div class="sync-panel glass-card" style="margin-bottom:22px;">
-      <div class="row" style="align-items:flex-end;flex-wrap:wrap;">
-        <div style="flex:1;min-width:170px;">
+     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:14px;">
+        <div>
           <label class="field-label">Order ID *</label>
           <input type="text" id="holdOrderInput" class="mono" placeholder="Required" autocomplete="off"
             style="width:100%;background:rgba(255,255,255,0.6);border:1px solid var(--glass-border);border-radius:10px;color:var(--text);padding:10px 12px;font-size:14px;">
         </div>
-        <div style="flex:1;min-width:170px;">
+        <div>
           <label class="field-label">Tracking ID *</label>
           <input type="text" id="holdTrackingInput" class="mono" placeholder="Required" autocomplete="off"
             style="width:100%;background:rgba(255,255,255,0.6);border:1px solid var(--glass-border);border-radius:10px;color:var(--text);padding:10px 12px;font-size:14px;">
         </div>
-        <div style="flex:1;min-width:170px;">
+               <div>
+          <label class="field-label">Quantity *</label>
+          <input type="number" id="holdQuantityInput" min="1" step="1" placeholder="Qty" class="mono"
+            style="width:100%;background:rgba(255,255,255,0.6);border:1px solid var(--glass-border);border-radius:10px;color:var(--text);padding:10px 12px;font-size:14px;">
+        </div>
+        <div>
           <label class="field-label">SKU *</label>
           <div class="combo">
             <input type="text" id="holdSkuInput" class="mono" placeholder="Type to search…" autocomplete="off">
             <div class="combo-list" id="holdSkuList"></div>
           </div>
         </div>
-        <div style="flex:0.7;min-width:110px;">
-          <label class="field-label">Quantity *</label>
-          <input type="number" id="holdQuantityInput" min="1" step="1" placeholder="Qty" class="mono"
-            style="width:100%;background:rgba(255,255,255,0.6);border:1px solid var(--glass-border);border-radius:10px;color:var(--text);padding:10px 12px;font-size:14px;">
-        </div>
-        <div style="flex:1.3;min-width:200px;">
-          <label class="field-label">Note *</label>
-          <textarea id="holdNoteInput" rows="3" placeholder="e.g. customer cancelled"
-            style="width:100%;background:rgba(255,255,255,0.6);border:1px solid var(--glass-border);border-radius:10px;color:var(--text);padding:10px 12px;font-size:13px;font-family:inherit;resize:vertical;line-height:1.4;"></textarea>
-        </div>
-        <div style="flex:1;min-width:170px;">
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:14px;">
+        <div>
           <label class="field-label">Courier *</label>
           <div class="combo">
             <input type="text" id="holdCourierInput" placeholder="Type to search…" autocomplete="off">
             <div class="combo-list" id="holdCourierList"></div>
           </div>
         </div>
-        <div style="flex:1;min-width:170px;">
+        <div>
           <label class="field-label">Name *</label>
           <div class="combo">
             <input type="text" id="holdNameInput" placeholder="Type to search…" autocomplete="off">
             <div class="combo-list" id="holdNameList"></div>
           </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:end;">
+        <div>
+          <label class="field-label">Note *</label>
+          <textarea id="holdNoteInput" rows="3" placeholder="e.g. customer cancelled"
+            style="width:100%;background:rgba(255,255,255,0.6);border:1px solid var(--glass-border);border-radius:10px;color:var(--text);padding:10px 12px;font-size:13px;font-family:inherit;resize:vertical;line-height:1.4;"></textarea>
         </div>
         <button class="btn primary" id="addHoldBtn">Add to hold list</button>
       </div>
@@ -503,7 +682,7 @@
 
     <div class="glass-card glass-table-wrap">
       <table>
-        <thead><tr><th>Order ID</th><th>Tracking ID</th><th>SKU</th><th>Qty</th><th>Note</th><th>Courier</th><th>Name</th><th>Added</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Order ID</th><th>Tracking ID</th><th>Qty</th><th>SKU</th><th>Note</th><th>Courier</th><th>Name</th><th>Added</th><th>Status</th><th></th></tr></thead>
         <tbody id="holdTableBody" class="mono"></tbody>
       </table>
       <div class="empty-state" id="holdEmpty">Nothing on hold.</div>
@@ -531,11 +710,14 @@
 (function(){
   'use strict';
 
+  // >>> PASTE YOUR GOOGLE SCRIPT EXEC LINK BETWEEN THE QUOTES <<<
+  var DEFAULT_EXEC_URL = 'https://script.google.com/macros/s/AKfycby0-h_RjAxrpRfSlJi6WHUdoq1D9H2oGQMl4XAijfDFW2L62TIR5SpTn0WXjuFIVaMC/exec';
+  if(DEFAULT_EXEC_URL.indexOf('https://') !== 0){ DEFAULT_EXEC_URL = ''; }
   var LS_URL = 'trackflow_webapp_url';
   var LS_SESSION = 'trackflow_session_pairs';
 
   var state = {
-    webAppUrl: localStorage.getItem(LS_URL) || 'https://script.google.com/macros/s/AKfycby0-h_RjAxrpRfSlJi6WHUdoq1D9H2oGQMl4XAijfDFW2L62TIR5SpTn0WXjuFIVaMC/exec',
+    webAppUrl: localStorage.getItem(LS_URL) || DEFAULT_EXEC_URL,
     sessionPairs: JSON.parse(localStorage.getItem(LS_SESSION) || '[]'),
     trackedMap: {},
     allOrderIds: {},
@@ -549,6 +731,7 @@
     scanState: 'awaiting_order',
     pendingOrderId: null,
     scanMode: 'Regular',
+    trackingOnly: false,
     connected: false,
     search: { session: '', sync: '', review: '', hold: '' }
   };
@@ -556,6 +739,11 @@
   function escapeHtml(s){
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
+  function fmtDate(s){
+  var d = new Date(s);
+  if(isNaN(d)) return s || '—';
+  return d.toLocaleString('en-IN', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+} 
   function matchesSearch(term, orderId, trackingId){
     if(!term) return true;
     term = term.toLowerCase();
@@ -593,20 +781,20 @@
       var t = ctx.currentTime + start;
       g.gain.setValueAtTime(0.0001, t);
       g.gain.exponentialRampToValueAtTime(vol || 0.25, t + 0.01);
+      g.gain.setValueAtTime(vol || 0.25, t + dur - 0.03);
       g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
       o.start(t); o.stop(t + dur + 0.02);
     }catch(e){}
   }
-  function beepError(){            // normal error: 2 short low beeps
+  function beepError(){            // normal error: long low buzzer (loud)
     if(muted) return;
-    tone(300, 0, 0.14, 'square', 0.25);
-    tone(300, 0.22, 0.14, 'square', 0.25);
+    tone(180, 0, 0.9, 'sawtooth', 0.8);
   }
-  function beepHold(){             // hold match: higher, longer alarm x3
+  function beepHold(){             // hold match: two-tone alarm x3 (loud)
     if(muted) return;
     for(var i = 0; i < 3; i++){
-      tone(880, i * 0.55, 0.25, 'sawtooth', 0.3);
-      tone(660, i * 0.55 + 0.26, 0.25, 'sawtooth', 0.3);
+      tone(880, i * 0.55, 0.25, 'sawtooth', 0.8);
+      tone(660, i * 0.55 + 0.26, 0.25, 'sawtooth', 0.8);
     }
   }
   var muteBtn = document.getElementById('muteBtn');
@@ -615,7 +803,7 @@
     muted = !muted;
     localStorage.setItem(LS_MUTE, muted ? '1' : '0');
     renderMute();
-    if(!muted) tone(660, 0, 0.12, 'sine', 0.2);
+    if(!muted) tone(660, 0, 0.12, 'sine', 0.3);
   });
   renderMute();
   ['click','keydown'].forEach(function(ev){
@@ -629,7 +817,7 @@
       item.classList.add('active');
       document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('active'); });
       document.getElementById('view-' + item.dataset.view).classList.add('active');
-      if(item.dataset.view === 'scan'){ scanInput.focus(); }
+      if(item.dataset.view === 'scan'){ refocusInput(); }
       if(item.dataset.view === 'sync'){ renderSyncView(); }
       if(item.dataset.view === 'review'){ renderReviewView(); }
       if(item.dataset.view === 'hold'){ renderHoldView(); }
@@ -719,12 +907,24 @@
       // Switching mode mid-pair would be ambiguous, so reset to awaiting order.
       state.scanState = 'awaiting_order';
       state.pendingOrderId = null;
+      state.trackingOnly = false;
+      scanInput.value = '';
+      trackInput.value = '';
+      document.getElementById('scanHint').innerHTML = state.scanMode === 'Other'
+        ? 'Scan the Order ID first — the cursor moves to the Tracking ID box. Order ID must not start with JE.'
+        : 'Order IDs start with <b>JE</b>. Scanner input is read on Enter.';
       updateScanPrompt();
       refocusInput();
     });
   });
 
   var scanInput = document.getElementById('scanInput');
+  var trackInput = document.getElementById('trackInput');
+  var redoOrderBtn = document.getElementById('redoOrderBtn');
+  var dismissBtn = document.getElementById('dismissError');
+  var confirmAction = null;
+  var trackOnlyBtn = document.getElementById('trackOnlyBtn');
+  var scanHint = document.getElementById('scanHint');
   var scanPromptLabel = document.getElementById('scanPromptLabel');
   var pendingChip = document.getElementById('pendingChip');
   var errorOverlay = document.getElementById('errorOverlay');
@@ -733,7 +933,10 @@
   var errorHoldRow = null; // set when the current error is a hold-list match
 
   function refocusInput(){
-    setTimeout(function(){ scanInput.focus(); }, 30);
+    setTimeout(function(){
+      if(state.scanMode === 'Other' && (state.trackingOnly || state.scanState === 'awaiting_tracking')){ trackInput.focus(); }
+      else { scanInput.focus(); }
+    }, 30);
   }
 
   function showError(msg, holdRow){
@@ -741,29 +944,71 @@
     errorMsg.scrollTop = 0;
     errorOverlay.classList.add('show');
     scanInput.disabled = true;
+    trackInput.disabled = true;
+    confirmAction = null;
+    dismissBtn.textContent = 'Dismiss';
+    pulledBtn.textContent = 'Pulled — mark resolved';
     errorHoldRow = holdRow || null;
     pulledBtn.style.display = errorHoldRow ? 'inline-block' : 'none';
     if(errorHoldRow) beepHold(); else beepError();
   }
 
+  // Warning with Cancel / Continue anyway (used in Amazon mode when the Order ID is not in the sheet)
+  function showConfirm(msg, yesFn){
+    errorMsg.textContent = msg;
+    errorMsg.scrollTop = 0;
+    errorOverlay.classList.add('show');
+    scanInput.disabled = true;
+    trackInput.disabled = true;
+    errorHoldRow = null;
+    confirmAction = yesFn;
+    dismissBtn.textContent = 'Cancel';
+    pulledBtn.textContent = 'Continue anyway';
+    pulledBtn.style.display = 'inline-block';
+    beepError();
+  }
+
+  function showHoldError(holdMatch, value){
+    showError('HOLD — pull this label:\n' + value +
+      '\nAdded by: ' + holdMatch.name +
+      (holdMatch.note ? ('\nNote: ' + holdMatch.note) : ''), holdMatch.row);
+  }
+
   function applyScanLockState(){
-    scanInput.disabled = errorOverlay.classList.contains('show') || !state.thirdParty;
+    var locked = errorOverlay.classList.contains('show') || !state.thirdParty;
+    scanInput.disabled = locked;
+    trackInput.disabled = locked;
     updateScanPrompt();
   }
 
   function closeErrorAndReset(){
     errorOverlay.classList.remove('show');
-    applyScanLockState();
     errorHoldRow = null;
+    confirmAction = null;
+    dismissBtn.textContent = 'Dismiss';
+    pulledBtn.textContent = 'Pulled — mark resolved';
     state.scanState = 'awaiting_order';
     state.pendingOrderId = null;
-    updateScanPrompt();
+    scanInput.value = '';
+    trackInput.value = '';
+    applyScanLockState();
     refocusInput();
   }
 
-  document.getElementById('dismissError').addEventListener('click', closeErrorAndReset);
+  dismissBtn.addEventListener('click', closeErrorAndReset);
 
   pulledBtn.addEventListener('click', function(){
+    if(confirmAction){
+      var yes = confirmAction;
+      confirmAction = null;
+      errorOverlay.classList.remove('show');
+      dismissBtn.textContent = 'Dismiss';
+      pulledBtn.textContent = 'Pulled — mark resolved';
+      pulledBtn.style.display = 'none';
+      applyScanLockState();
+      yes();
+      return;
+    }
     var row = errorHoldRow;
     pulledBtn.disabled = true; pulledBtn.textContent = 'Marking…';
     (row ? apiPost({ action: 'resolveHold', row: row }) : Promise.resolve({ok:true})).then(function(res){
@@ -783,21 +1028,35 @@
   });
 
   function updateScanPrompt(){
-    if(state.scanState === 'awaiting_order'){
-      scanPromptLabel.textContent = 'Scan Order ID';
-      scanPromptLabel.classList.remove('tracking');
-      scanInput.classList.remove('tracking');
-      scanInput.placeholder = 'Waiting for Order ID scan…';
+    var other = state.scanMode === 'Other';
+    var awaitingOrder = state.scanState === 'awaiting_order';
+    scanPromptLabel.textContent = awaitingOrder ? 'Scan Order ID' : 'Scan Tracking ID';
+    var trackOnly = other && state.trackingOnly;
+    if(trackOnly){ scanPromptLabel.textContent = 'Scan Tracking ID'; }
+    scanPromptLabel.classList.toggle('tracking', !awaitingOrder || trackOnly);
+    scanInput.classList.toggle('tracking', !awaitingOrder && !other);
+    scanInput.readOnly = other && (!awaitingOrder || trackOnly);
+    trackOnlyBtn.classList.toggle('active', trackOnly);
+    trackOnlyBtn.textContent = trackOnly ? 'Tracking only: ON' : 'Tracking only';
+    if(other){
+      scanHint.innerHTML = trackOnly
+        ? 'Tracking-only mode: scan tracking IDs only. Press the button again to go back to Order ID, then Tracking ID.'
+        : 'Scan the Order ID first — the cursor moves to the Tracking ID box. Order ID must not start with JE.';
+      scanInput.placeholder = trackOnly ? 'Not used in tracking-only mode' : 'Order ID…';
+      trackInput.placeholder = 'Tracking ID… (tracking-only is OK)';
       pendingChip.style.display = 'none';
+      redoOrderBtn.style.display = (awaitingOrder || trackOnly) ? 'none' : 'inline-block';
+      if(!awaitingOrder){ scanInput.value = state.pendingOrderId || ''; }
     } else {
-      scanPromptLabel.textContent = 'Scan Tracking ID';
-      scanPromptLabel.classList.add('tracking');
-      scanInput.classList.add('tracking');
-      scanInput.placeholder = 'Waiting for Tracking ID scan…';
-      pendingChip.style.display = 'inline-flex';
-      document.getElementById('pendingOrderText').textContent = state.pendingOrderId;
+      scanInput.placeholder = awaitingOrder ? 'Waiting for Order ID scan…' : 'Waiting for Tracking ID scan…';
+      if(awaitingOrder){
+        pendingChip.style.display = 'none';
+      } else {
+        pendingChip.style.display = 'inline-flex';
+        document.getElementById('pendingOrderText').textContent = state.pendingOrderId;
+      }
     }
-    if(!state.thirdParty){ scanInput.placeholder = 'Select Third Party first'; }
+    if(!state.thirdParty){ scanInput.placeholder = 'Select Third Party first'; trackInput.placeholder = 'Select Third Party first'; }
   }
 
   function alreadyInSession(orderId){
@@ -820,6 +1079,12 @@
     if(e.key !== 'Enter') return;
     if(!state.thirdParty) return;
     var value = scanInput.value.trim();
+    if(state.scanMode === 'Other'){
+      if(state.scanState !== 'awaiting_order' || state.trackingOnly) return;
+      scanInput.value = '';
+      if(value) handleOtherOrder(value);
+      return;
+    }
     scanInput.value = '';
     if(!value) return;
 
@@ -883,6 +1148,90 @@
     }
   });
 
+  // ---------- Amazon mode: two boxes ----------
+  function acceptOtherOrder(value){
+    state.pendingOrderId = value;
+    state.scanState = 'awaiting_tracking';
+    updateScanPrompt();
+    refocusInput();
+  }
+
+  function handleOtherOrder(value){
+    var holdMatch = findActiveHold(value);
+    if(holdMatch){ showHoldError(holdMatch, value); return; }
+    if(value.slice(0,2).toUpperCase() === 'JE'){
+      showError('This looks like a regular Order ID (starts with "JE"):\n' + value + '\n\nSwitch to "Regular scan" mode for this one.');
+      return;
+    }
+    if(alreadyInSession(value)){
+      showError('Order ID ' + value + ' was already scanned this session.');
+      return;
+    }
+    if(state.trackedMap[value]){
+      showError('Order ID ' + value + ' already has a tracking ID in the sheet:\n' + state.trackedMap[value]);
+      return;
+    }
+    var sheetLoaded = Object.keys(state.allOrderIds || {}).length > 0;
+    if(sheetLoaded && !state.allOrderIds[value]){
+      showConfirm('Not in sheet:\n' + value + '\n\nThis may be a tracking ID, not an Order ID.\nContinue as Order ID?', function(){
+        acceptOtherOrder(value);
+      });
+      return;
+    }
+    acceptOtherOrder(value);
+  }
+
+  function resetOtherBoxes(){
+    state.pendingOrderId = null;
+    state.scanState = 'awaiting_order';
+    scanInput.value = '';
+    trackInput.value = '';
+    updateScanPrompt();
+    refocusInput();
+  }
+  redoOrderBtn.addEventListener('click', resetOtherBoxes);
+  trackOnlyBtn.addEventListener('click', function(){
+    if(state.scanMode !== 'Other') return;
+    state.trackingOnly = !state.trackingOnly;
+    resetOtherBoxes();
+  });
+
+  trackInput.addEventListener('keydown', function(e){
+    if(e.key === 'Escape'){ resetOtherBoxes(); return; }
+    if(e.key !== 'Enter') return;
+    if(!state.thirdParty || state.scanMode !== 'Other') return;
+    var value = trackInput.value.trim();
+    trackInput.value = '';
+    if(!value) return;
+
+    var holdMatch = findActiveHold(value);
+    if(holdMatch){ showHoldError(holdMatch, value); return; }
+    if(alreadyTrackingInSession(value)){
+      showError('Tracking ID ' + value + ' was already scanned this session (for a different Order ID).');
+      return;
+    }
+    if(alreadyTrackingInSheet(value)){
+      showError('Tracking ID ' + value + ' is already assigned to another Order ID in the sheet.');
+      return;
+    }
+    state.sessionPairs.unshift({
+      orderId: state.pendingOrderId || '',     // empty = tracking-only scan
+      trackingId: value,
+      time: new Date().toLocaleString(),
+      status: 'pending',
+      source: 'Other',
+      thirdParty: state.thirdParty
+    });
+    state.pendingOrderId = null;
+    state.scanState = 'awaiting_order';
+    scanInput.value = '';
+    updateScanPrompt();
+    persistSession();
+    renderSessionTable();
+    updateNavCounts();
+    refocusInput();
+  });
+
   document.addEventListener('click', function(e){
     if(e.target.closest && e.target.closest('input, textarea, button, select, .combo, .combo-list')) return;
     if(document.getElementById('view-scan').classList.contains('active') && !errorOverlay.classList.contains('show')){
@@ -900,6 +1249,10 @@
     renderSyncView();
   });
 
+  document.getElementById('waitingPill').addEventListener('click', function(){
+    document.querySelector('.nav-item[data-view="hold"]').click();
+  });
+
   function renderSessionTable(){
     var body = document.getElementById('sessionTableBody');
     var empty = document.getElementById('sessionEmpty');
@@ -910,10 +1263,39 @@
     list.forEach(function(p){
       var tr = document.createElement('tr');
       var src = p.source || 'Regular';
-      tr.innerHTML = '<td>'+p.orderId+'</td><td>'+p.trackingId+'</td><td>'+(p.thirdParty||'—')+'</td><td>'+p.time+'</td>' +
+      var changeBtn = p.status === 'pending' ? '<button class="btn ghost change-tp-btn">Change Third Party</button>' : '';
+      tr.innerHTML = '<td>'+escapeHtml(p.orderId || '—')+'</td><td>'+escapeHtml(p.trackingId)+'</td><td class="tp-cell">'+escapeHtml(p.thirdParty||'—')+'</td><td>'+p.time+'</td>' +
         '<td><span class="badge '+src.toLowerCase()+'">'+src+'</span></td>' +
-        '<td><span class="badge '+p.status+'">'+p.status+'</span></td>';
+        '<td><span class="badge '+p.status+'">'+p.status+'</span></td><td>'+changeBtn+'</td>';
       body.appendChild(tr);
+      var cb = tr.querySelector('.change-tp-btn');
+      if(cb){
+        cb.addEventListener('click', function(){
+          var cell = tr.querySelector('.tp-cell');
+          var sel = document.createElement('select');
+          sel.className = 'tp-select';
+          state.thirdParties.forEach(function(t){
+            var o = document.createElement('option');
+            o.value = t; o.textContent = t;
+            if(t === p.thirdParty) o.selected = true;
+            sel.appendChild(o);
+          });
+          cell.innerHTML = '';
+          cell.appendChild(sel);
+          cb.style.display = 'none';
+          sel.focus();
+          var done = false;
+          function finish(save){
+            if(done) return; done = true;
+            if(save && sel.value){ p.thirdParty = sel.value; persistSession(); }
+            renderSessionTable();
+            renderSyncView();
+            refocusInput();
+          }
+          sel.addEventListener('change', function(){ finish(true); });
+          sel.addEventListener('blur', function(){ finish(false); });
+        });
+      }
     });
   }
 
@@ -927,7 +1309,11 @@
     navReview.textContent = openCount;
     navReview.classList.toggle('alert', openCount > 0);
 
-    var activeHoldCount = state.hold.filter(function(h){ return h.status === 'Active'; }).length;
+    var activeHoldCount = state.hold.filter(function(h){ return h.status === 'Scanning' || h.status === 'Waiting'; }).length;
+    var waitingCount = state.hold.filter(function(h){ return h.status === 'Waiting'; }).length;
+    var pill = document.getElementById('waitingPill');
+    pill.textContent = waitingCount + (waitingCount === 1 ? ' label waiting for its parcel' : ' labels waiting for parcels') + ' — open Hold List';
+    pill.classList.toggle('show', waitingCount > 0);
     var navHold = document.getElementById('navHoldCount');
     navHold.textContent = activeHoldCount;
     navHold.classList.toggle('alert', activeHoldCount > 0);
@@ -944,7 +1330,7 @@
     visible.forEach(function(p){
       var tr = document.createElement('tr');
       var src = p.source || 'Regular';
-      tr.innerHTML = '<td>'+p.orderId+'</td><td>'+p.trackingId+'</td><td>'+(p.thirdParty||'—')+'</td><td>'+p.time+'</td>' +
+      tr.innerHTML = '<td>'+escapeHtml(p.orderId || '—')+'</td><td>'+escapeHtml(p.trackingId)+'</td><td>'+escapeHtml(p.thirdParty||'—')+'</td><td>'+p.time+'</td>' +
         '<td><span class="badge '+src.toLowerCase()+'">'+src+'</span></td>';
       body.appendChild(tr);
     });
@@ -964,14 +1350,14 @@
       .then(function(res){
         btn.disabled = false; btn.textContent = 'Sync to sheet';
         if(!res.ok){ alert('Sync failed: ' + res.error); return; }
-        var matchedIds = {};
-        res.matched.forEach(function(m){ matchedIds[m.orderId] = true; state.trackedMap[m.orderId] = m.trackingId; });
-        var unmatchedIds = {};
-        res.unmatched.forEach(function(u){ unmatchedIds[u.orderId] = true; });
+        var matchedTrk = {};
+        res.matched.forEach(function(m){ matchedTrk[m.trackingId] = true; state.trackedMap[m.orderId] = m.trackingId; });
+        var unmatchedTrk = {};
+        res.unmatched.forEach(function(u){ unmatchedTrk[u.trackingId] = true; });
         state.sessionPairs.forEach(function(p){
           if(p.status !== 'pending') return;
-          if(matchedIds[p.orderId]) p.status = 'synced';
-          else if(unmatchedIds[p.orderId]) p.status = 'unmatched';
+          if(matchedTrk[p.trackingId]) p.status = 'synced';
+          else if(unmatchedTrk[p.trackingId]) p.status = 'unmatched';
         });
         persistSession();
         renderSessionTable();
@@ -1018,7 +1404,7 @@
       var tr = document.createElement('tr');
       var src = u.source || 'Regular';
       var closeBtn = u.status === 'Open' ? '<button class="btn ghost close-btn" data-row="'+u.row+'">Close</button>' : '';
-      tr.innerHTML = '<td>'+u.orderId+'</td><td>'+(u.trackingId||'—')+'</td><td>'+u.scannedAt+'</td>' +
+      tr.innerHTML = '<td>'+escapeHtml(u.orderId || '—')+'</td><td>'+escapeHtml(u.trackingId||'—')+'</td><td>'+escapeHtml(u.thirdParty||'—')+'</td><td>'+u.scannedAt+'</td>' +
         '<td><span class="badge '+src.toLowerCase()+'">'+src+'</span></td>' +
         '<td><span class="badge '+u.status.toLowerCase()+'">'+u.status+'</span></td><td>'+closeBtn+'</td>';
       body.appendChild(tr);
@@ -1049,6 +1435,26 @@
     });
   });
   document.getElementById('refreshHoldBtn').addEventListener('click', loadSnapshot);
+
+  document.getElementById('startPackingBtn').addEventListener('click', function(){
+    if(!state.webAppUrl){ alert('Connect your sheet in Settings first.'); return; }
+    var waiting = state.hold.filter(function(h){ return h.status === 'Waiting'; }).length;
+    if(waiting === 0){ alert('No labels are Waiting.'); return; }
+    if(!confirm('Move ' + waiting + (waiting === 1 ? ' label' : ' labels') + ' from Waiting to Packed?')) return;
+    var btn = document.getElementById('startPackingBtn');
+    btn.disabled = true; btn.textContent = 'Working…';
+    apiPost({ action: 'startPacking' }).then(function(res){
+      btn.disabled = false; btn.textContent = 'Start packing';
+      if(!res.ok){ alert('Could not update: ' + res.error); return; }
+      state.hold.forEach(function(h){ if(h.status === 'Waiting') h.status = 'Packed'; });
+      renderHoldView();
+      updateNavCounts();
+      loadSnapshot();
+    }).catch(function(){
+      btn.disabled = false; btn.textContent = 'Start packing';
+      alert('Could not update — check your connection.');
+    });
+  });
 
   document.getElementById('addHoldBtn').addEventListener('click', function(){
     if(!state.webAppUrl){ alert('Connect your sheet in Settings first.'); return; }
@@ -1107,7 +1513,7 @@
     var term = state.search.hold;
     var list = state.hold.filter(function(h){
       if(!matchesSearch(term, h.orderId, h.trackingId)) return false;
-      if(holdFilter === 'active') return h.status === 'Scanning' || h.status === 'Packed';
+      if(holdFilter === 'active') return h.status === 'Scanning' || h.status === 'Waiting' || h.status === 'Packed';
       if(holdFilter === 'resolved') return h.status === 'Resolved';
       return true;
     });
@@ -1115,13 +1521,13 @@
     list.forEach(function(h){
       var tr = document.createElement('tr');
       var resolveBtn = h.status !== 'Resolved' ? '<button class="btn ghost resolve-hold-btn" data-row="'+h.row+'">Resolve</button>' : '';
-      var statusClass = h.status === 'Resolved' ? 'closed' : h.status.toLowerCase(); // scanning | packed | closed
+      var statusClass = h.status === 'Resolved' ? 'closed' : h.status.toLowerCase(); // scanning | waiting | packed | closed
       var noteFull = escapeHtml(h.note || '');
       var noteFlat = (h.note || '').replace(/\s*\n\s*/g, ' ');
       var noteShort = noteFlat.length > 40 ? escapeHtml(noteFlat.slice(0,40)) + '…' : (noteFlat ? escapeHtml(noteFlat) : '—');
-      tr.innerHTML = '<td>'+(h.orderId||'—')+'</td><td>'+(h.trackingId||'—')+'</td><td>'+(h.sku||'—')+'</td><td>'+(h.quantity||'—')+'</td>' +
+      tr.innerHTML = '<td>'+escapeHtml(h.orderId||'—')+'</td><td>'+escapeHtml(h.trackingId||'—')+'</td><td>'+escapeHtml(h.quantity||'—')+'</td><td>'+escapeHtml(h.sku||'—')+'</td>' +
         '<td class="note-cell" title="'+noteFull+'">'+noteShort+'</td>' +
-        '<td>'+(h.courier||'—')+'</td><td>'+(h.name||'—')+'</td><td>'+h.addedAt+'</td>' +
+            '<td>'+escapeHtml(h.courier||'—')+'</td><td>'+escapeHtml(h.name||'—')+'</td><td class="added-cell">'+escapeHtml(fmtDate(h.addedAt))+'</td>' +
         '<td><span class="badge '+statusClass+'">'+h.status+'</span></td><td>'+resolveBtn+'</td>';
       body.appendChild(tr);
     });
