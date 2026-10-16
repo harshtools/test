@@ -291,7 +291,10 @@
 .glass-table-wrap{overflow-x:auto;}
 .glass-table-wrap table{min-width:100%;}
 .resolve-hold-btn,
+.delete-hold-btn,
 .close-btn{white-space:nowrap;padding:7px 14px;}
+.delete-hold-btn{color:var(--error);border-color:rgba(220,38,38,.35);margin-left:6px;}
+.delete-hold-btn:hover{background:var(--error-bg);}
 .added-cell{white-space:nowrap;}
   /* ---------- Mobile ---------- */
 @media (max-width: 768px){
@@ -1537,8 +1540,26 @@
       tr.innerHTML = '<td>'+escapeHtml(h.orderId||'—')+'</td><td>'+escapeHtml(h.trackingId||'—')+'</td><td>'+escapeHtml(h.quantity||'—')+'</td><td>'+escapeHtml(h.sku||'—')+'</td>' +
         '<td class="note-cell" title="'+noteFull+'">'+noteShort+'</td>' +
             '<td>'+escapeHtml(h.courier||'—')+'</td><td>'+escapeHtml(h.name||'—')+'</td><td class="added-cell">'+escapeHtml(fmtDate(h.addedAt))+'</td>' +
-        '<td><span class="badge '+statusClass+'">'+h.status+'</span></td><td>'+resolveBtn+'</td>';
+        '<td><span class="badge '+statusClass+'">'+h.status+'</span></td><td style="white-space:nowrap;">'+resolveBtn+'<button class="btn ghost delete-hold-btn" data-row="'+h.row+'">Delete</button></td>';
       body.appendChild(tr);
+    });
+    body.querySelectorAll('.delete-hold-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var row = parseInt(btn.dataset.row, 10);
+        if(!confirm('Delete this hold row permanently? This cannot be undone.')) return;
+        var target = state.hold.find(function(h){ return h.row === row; }) || {};
+        btn.disabled = true; btn.textContent = '…';
+        apiPost({ action: 'deleteHold', row: row, orderId: target.orderId || '', trackingId: target.trackingId || '' }).then(function(res){
+          if(!res.ok){ alert('Could not delete: ' + res.error); btn.disabled = false; btn.textContent = 'Delete'; return; }
+          state.hold = state.hold.filter(function(h){ return h.row !== row; });
+          renderHoldView();
+          updateNavCounts();
+          loadSnapshot(); // row numbers shift after a delete, so reload from the sheet
+        }).catch(function(){
+          alert('Could not delete — check your connection.');
+          btn.disabled = false; btn.textContent = 'Delete';
+        });
+      });
     });
     body.querySelectorAll('.resolve-hold-btn').forEach(function(btn){
       btn.addEventListener('click', function(){
