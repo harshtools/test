@@ -297,6 +297,9 @@
 .delete-hold-btn:hover{background:var(--error-bg);box-shadow:none;}
 .delete-hold-btn svg{display:block;}
 .added-cell{white-space:nowrap;}
+  .note-box{position:relative;max-width:200px;padding-right:28px;min-height:24px;}
+.note-text{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:help;}
+.note-edit-btn{position:absolute;top:-2px;right:0;width:24px;height:24px;padding:0;border-radius:8px;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;}
   /* ---------- Mobile ---------- */
 @media (max-width: 768px){
   body{
@@ -669,6 +672,13 @@
         <div id="holdSkuChips" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;"></div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:14px;">
+                <div>
+          <label class="field-label">Reason *</label>
+          <div class="combo">
+            <input type="text" id="holdReasonInput" placeholder="Type to search…" autocomplete="off">
+            <div class="combo-list" id="holdReasonList"></div>
+          </div>
+        </div>
         <div>
           <label class="field-label">Courier *</label>
           <div class="combo">
@@ -707,7 +717,7 @@
 
     <div class="glass-card glass-table-wrap">
       <table>
-        <thead><tr><th>Order ID</th><th>Tracking ID</th><th>Qty</th><th>SKU</th><th>Note</th><th>Courier</th><th>Name</th><th>Added</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Order ID</th><th>Tracking ID</th><th>Reason</th><th>Qty</th><th>SKU</th><th>Note</th><th>Courier</th><th>Name</th><th>Added</th><th>Status</th><th></th></tr></thead>
         <tbody id="holdTableBody" class="mono"></tbody>
       </table>
       <div class="empty-state" id="holdEmpty">Nothing on hold.</div>
@@ -717,6 +727,17 @@
 
 </div>
 
+  <div class="modal-bg" id="noteModal">
+  <div class="modal">
+    <h2>Edit note</h2>
+    <p id="noteModalInfo"></p>
+    <textarea id="noteEditInput" rows="4" style="width:100%;background:rgba(255,255,255,0.7);border:1px solid var(--glass-border);border-radius:12px;color:var(--text);padding:11px 13px;font-size:14px;font-family:inherit;resize:vertical;"></textarea>
+    <div class="modal-actions">
+      <button class="btn ghost" id="noteCancel">Cancel</button>
+      <button class="btn primary" id="noteSave">Save</button>
+    </div>
+  </div>
+</div>
 <!-- Settings modal -->
 <div class="modal-bg" id="settingsModal">
   <div class="modal">
@@ -750,6 +771,7 @@
     hold: [],
     names: [],
     couriers: [],
+    reasons: [],
     skus: [],
     thirdParties: [],
     thirdParty: '',
@@ -968,6 +990,7 @@
          lastHoldRefresh = Date.now();
       state.names = res.names || [];
       state.couriers = res.couriers || [];
+      state.reasons = res.reasons || [];
       state.skus = res.skus || [];
       state.thirdParties = res.thirdParties || [];
       setConn(true, 'Connected');
@@ -1559,6 +1582,7 @@
     var noteInput = document.getElementById('holdNoteInput');
     var courierInput = document.getElementById('holdCourierInput');
     var nameInput = document.getElementById('holdNameInput');
+          var reasonInput = document.getElementById('holdReasonInput');
 
     var orderId = orderInput.value.trim();
     var trackingId = trackingInput.value.trim();
@@ -1566,6 +1590,7 @@
     var note = noteInput.value.trim();
     var courier = courierInput.value.trim();
     var name = nameInput.value.trim();
+          var reason = reasonInput.value.trim();
 
     if(!orderId){ alert('Order ID is required.'); orderInput.focus(); return; }
     if(!trackingId){ alert('Tracking ID is required.'); trackingInput.focus(); return; }
@@ -1579,6 +1604,8 @@
     var sku = chosenSkus.join(', ');
 
     if(!note){ alert('Note is required.'); noteInput.focus(); return; }
+          if(!reason){ alert('Reason is required.'); reasonInput.focus(); return; }
+      if(state.reasons.length && state.reasons.indexOf(reason) === -1){ alert('Pick a Reason from the list.'); reasonInput.focus(); return; }
     if(!courier){ alert('Courier is required.'); courierInput.focus(); return; }
     if(state.couriers.length && state.couriers.indexOf(courier) === -1){ alert('Pick a Courier from the list.'); courierInput.focus(); return; }
     if(!name){ alert('Name is required.'); nameInput.focus(); return; }
@@ -1586,7 +1613,7 @@
 
     var btn = document.getElementById('addHoldBtn');
     var msg = document.getElementById('holdAddMsg');
-    var lockEls = [orderInput, trackingInput, quantityInput, noteInput, courierInput, nameInput, holdSkuInputEl];
+          var lockEls = [orderInput, trackingInput, quantityInput, noteInput, reasonInput, courierInput, nameInput, holdSkuInputEl];
 
     function showMsg(kind, text, ms){
       clearTimeout(showMsg.t);
@@ -1604,7 +1631,7 @@
 
     msg.className = 'hold-msg';
     setBusy(true);
-    apiPost({ action: 'addHold', orderId: orderId, trackingId: trackingId, sku: sku, quantity: quantity, note: note, courier: courier, name: name })
+    apiPost({ action: 'addHold',reason: reason, orderId: orderId, trackingId: trackingId, sku: sku, quantity: quantity, note: note, courier: courier, name: name })
       .then(function(res){
         setBusy(false);
         if(!res.ok){ showMsg('err', 'Could not add: ' + res.error, 5000); return; }
@@ -1614,6 +1641,7 @@
         noteInput.value = '';
         courierInput.value = '';
         nameInput.value = '';
+                  reasonInput.value = '';
         chosenSkus = [];
         renderSkuChips();
         orderInput.focus();
@@ -1656,11 +1684,26 @@
       var noteFull = escapeHtml(h.note || '');
       var noteFlat = (h.note || '').replace(/\s*\n\s*/g, ' ');
       var noteShort = noteFlat.length > 40 ? escapeHtml(noteFlat.slice(0,40)) + '…' : (noteFlat ? escapeHtml(noteFlat) : '—');
-      tr.innerHTML = '<td>'+escapeHtml(h.orderId||'—')+'</td><td>'+escapeHtml(h.trackingId||'—')+'</td><td>'+escapeHtml(h.quantity||'—')+'</td><td>'+escapeHtml(h.sku||'—')+'</td>' +
-        '<td class="note-cell" title="'+noteFull+'">'+noteShort+'</td>' +
-            '<td>'+escapeHtml(h.courier||'—')+'</td><td>'+escapeHtml(h.name||'—')+'</td><td class="added-cell">'+escapeHtml(fmtDate(h.addedAt))+'</td>' +
+           var editBtn = '<button class="btn ghost note-edit-btn edit-note-btn" data-row="'+h.row+'" title="Edit note" aria-label="Edit note">✎</button>';
+      tr.innerHTML = '<td>'+escapeHtml(h.orderId||'—')+'</td><td>'+escapeHtml(h.trackingId||'—')+'</td>' +
+        '<td>'+escapeHtml(h.reason||'—')+'</td><td>'+escapeHtml(h.quantity||'—')+'</td>' +
+        '<td class="note-cell" title="'+escapeHtml(h.sku||'')+'">'+escapeHtml(h.sku||'—')+'</td>' +
+        '<td><div class="note-box"><span class="note-text" title="'+noteFull+'">'+noteShort+'</span>'+editBtn+'</div></td>' +
+        '<td>'+escapeHtml(h.courier||'—')+'</td><td>'+escapeHtml(h.name||'—')+'</td><td class="added-cell">'+escapeHtml(fmtDate(h.addedAt))+'</td>' +
         '<td><span class="badge '+statusClass+'">'+h.status+'</span></td><td style="white-space:nowrap;">'+resolveBtn+'<button class="btn ghost delete-hold-btn" data-row="'+h.row+'" title="Delete" aria-label="Delete">'+TRASH_SVG+'</button></td>';
       body.appendChild(tr);
+    });
+        body.querySelectorAll('.edit-note-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var row = parseInt(btn.dataset.row, 10);
+        var item = state.hold.find(function(h){ return h.row === row; });
+        if(!item) return;
+        editingHold = item;
+        document.getElementById('noteModalInfo').textContent = 'Order ' + (item.orderId || '—');
+        document.getElementById('noteEditInput').value = item.note || '';
+        document.getElementById('noteModal').classList.add('show');
+        document.getElementById('noteEditInput').focus();
+      });
     });
     body.querySelectorAll('.delete-hold-btn').forEach(function(btn){
       btn.addEventListener('click', function(){
@@ -1695,6 +1738,31 @@
     });
   }
 
+    var editingHold = null;
+  document.getElementById('noteCancel').addEventListener('click', function(){
+    document.getElementById('noteModal').classList.remove('show');
+    editingHold = null;
+  });
+  document.getElementById('noteSave').addEventListener('click', function(){
+    if(!editingHold) return;
+    var newNote = document.getElementById('noteEditInput').value.trim();
+    if(!newNote){ alert('Note cannot be empty.'); return; }
+    var item = editingHold, btn = document.getElementById('noteSave');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    apiPost({ action: 'editHoldNote', row: item.row, orderId: item.orderId || '', trackingId: item.trackingId || '', note: newNote })
+      .then(function(res){
+        btn.disabled = false; btn.textContent = 'Save';
+        if(!res.ok){ alert('Could not save: ' + res.error); return; }
+        var cur = state.hold.find(function(h){ return h.row === item.row; });
+        if(cur) cur.note = newNote;
+        document.getElementById('noteModal').classList.remove('show');
+        editingHold = null;
+        renderHoldView();
+      }).catch(function(){
+        btn.disabled = false; btn.textContent = 'Save';
+        alert('Could not save — check your connection.');
+      });
+  });
   // ---------- Search boxes ----------
   document.getElementById('sessionSearchInput').addEventListener('input', function(e){
     state.search.session = e.target.value.trim();
@@ -1867,7 +1935,7 @@ function setupCombo(inputId, listId, getOptions, onSelect){
   });
   holdQuantityEl.addEventListener('input', renderSkuChips);
   renderSkuChips();
-
+  setupCombo('holdReasonInput', 'holdReasonList', function(){ return state.reasons; });
   setupCombo('holdCourierInput', 'holdCourierList', function(){ return state.couriers; });
   setupCombo('holdNameInput', 'holdNameList', function(){ return state.names; });
 
