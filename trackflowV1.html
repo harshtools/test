@@ -428,10 +428,25 @@
   .view-head h1{font-size:20px;}
   .btn{padding:9px 14px;}
 }
+  .bc-spin{display:inline-block;width:22px;height:22px;vertical-align:-6px;margin-right:8px;overflow:visible;}
+.bc-beam{animation:bcScan 1.3s linear infinite;}
+.bc-trail{animation:bcScanT 1.3s linear infinite;}
+@keyframes bcScan{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(45px);opacity:0}}
+@keyframes bcScanT{0%{transform:translateX(0);opacity:0}12%{opacity:.28}88%{opacity:.28}100%{transform:translateX(45px);opacity:0}}
+@media (prefers-reduced-motion:reduce){.bc-beam,.bc-trail{animation:none;opacity:1;}}
+.btn.primary:disabled{opacity:.92;cursor:wait;}
+.hold-msg{display:none;margin-top:10px;padding:9px 14px;border-radius:12px;font-size:13px;font-weight:600;}
+.hold-msg.show{display:block;}
+.hold-msg.ok{background:var(--teal-bg);color:#0f7a6c;}
+.hold-msg.err{background:var(--error-bg);color:#b91c1c;}
+  .live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#12b8a0;box-shadow:0 0 6px #12b8a0;margin-right:7px;vertical-align:1px;animation:livePulse 2s ease-in-out infinite;}
+.live-dot.off{background:#8b93a3;box-shadow:none;animation:none;}
+@keyframes livePulse{0%,100%{opacity:1}50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){.live-dot{animation:none;}}
 </style>
 </head>
 <body>
-
+<svg width="0" height="0" style="position:absolute"><defs><linearGradient id="bcg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8b7cf6"/><stop offset="1" stop-color="#4fd1c4"/></linearGradient></defs></svg>
 <div class="sidebar">
   <div class="brand">
     <div class="name">Track<span>Flow</span></div>
@@ -616,6 +631,7 @@
       <div>
         <h1>Hold List</h1>
         <div class="sub">Order IDs or Tracking IDs to pull aside. Scanning one stops with an alert. Waiting = label scanned, not packed yet.</div>
+           <div class="sub" id="holdAge" style="margin-top:4px;"></div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <button class="btn primary" id="startPackingBtn">Start packing</button>
@@ -677,6 +693,7 @@
         <button class="btn primary" id="addHoldBtn">Add to hold list</button>
       </div>
       <div class="scan-hint" style="margin-top:10px;">All fields are required.</div>
+      <div class="hold-msg" id="holdAddMsg"></div>
     </div>
 
     <div class="toggle-row">
@@ -762,7 +779,16 @@
   function persistSession(){
     localStorage.setItem(LS_SESSION, JSON.stringify(state.sessionPairs));
   }
-
+// ---------- Barcode spinner (logo with a red line sweeping left to right) ----------
+  var BC_SPINNER = '<svg class="bc-spin" viewBox="0 0 64 64" aria-hidden="true">' +
+    '<rect width="64" height="64" rx="14" fill="url(#bcg)" stroke="#ffffff" stroke-opacity="0.75" stroke-width="4"/>' +
+    '<rect x="13" y="16" width="6" height="32" rx="1.5" fill="#ffffff"/>' +
+    '<rect x="24" y="16" width="4" height="32" rx="1.5" fill="#ffffff"/>' +
+    '<rect x="33" y="16" width="8" height="32" rx="1.5" fill="#ffffff"/>' +
+    '<rect x="46" y="16" width="5" height="32" rx="1.5" fill="#ffffff"/>' +
+    '<rect class="bc-trail" x="2" y="10" width="10" height="44" rx="2" fill="#ef4444"/>' +
+    '<rect class="bc-beam" x="8" y="10" width="3" height="44" rx="1.5" fill="#ef4444"/>' +
+    '</svg>';
   // ---------- Sound (beeps made by the browser, no files) ----------
   var LS_MUTE = 'trackflow_muted';
   var muted = localStorage.getItem(LS_MUTE) === '1';
@@ -858,7 +884,66 @@
       body: JSON.stringify(body)
     }).then(function(r){ return r.json(); });
   }
-
+// ---------- Live refresh (every 10 s, quiet): Hold List + Resolve Queue + other devices' changes ----------
+  var holdPolling = false;
+  var lastHoldRefresh = 0;
+  var lastRev = null;          // change counter from the script; goes up when any device writes to the sheet
+  var quietBusy = false;
+  function apiGetHold(){
+    var u = state.webAppUrl + (state.webAppUrl.indexOf('?') > -1 ? '&' : '?') + 'only=hold&_=' + Date.now();
+    return fetch(u, { method: 'GET' }).then(function(r){ return r.json(); });
+  }
+  function apiGetLight(){
+    var u = state.webAppUrl + (state.webAppUrl.indexOf('?') > -1 ? '&' : '?') + 'only=light&_=' + Date.now();
+    return fetch(u, { method: 'GET' }).then(function(r){ return r.json(); });
+  }
+  function renderHoldAge(){
+    var el = document.getElementById('holdAge');
+    if(!el) return;
+    if(!state.webAppUrl || !lastHoldRefresh){ el.innerHTML = ''; el.dataset.s = ''; return; }
+    // green dot = checked in the last 30 s; grey dot = no answer for 30 s (offline or tab asleep)
+    var key = ((Date.now() - lastHoldRefresh) > 30000) ? 'off' : 'on';
+    if(el.dataset.s === key) return;
+    el.dataset.s = key;
+    el.innerHTML = '<span class="live-dot' + (key === 'off' ? ' off' : '') + '"></span>' + (key === 'off' ? 'Paused' : 'Live');
+  }
+  function refreshHold(){
+    if(!state.webAppUrl || holdPolling) return Promise.resolve();
+    holdPolling = true;
+    return apiGetLight().then(function(res){
+      holdPolling = false;
+      if(!res || !res.ok) return;
+      lastHoldRefresh = Date.now();
+      var changed = false;
+      if(res.hold && JSON.stringify(res.hold) !== JSON.stringify(state.hold)){
+        state.hold = res.hold;
+        renderHoldView();
+        changed = true;
+      }
+      if(res.unmatched && JSON.stringify(res.unmatched) !== JSON.stringify(state.unmatched)){
+        state.unmatched = res.unmatched;
+        renderReviewView();
+        changed = true;
+      }
+      if(changed) updateNavCounts();
+      renderHoldAge();
+      // Another device wrote to the sheet: reload the full sheet data once, quietly
+      if(res.rev !== undefined){
+        var other = (lastRev !== null && res.rev !== lastRev);
+        lastRev = res.rev;
+        if(other && !quietBusy){
+          quietBusy = true;
+          loadSnapshot(true).then(function(){ quietBusy = false; }, function(){ quietBusy = false; });
+        }
+      }
+    }).catch(function(){ holdPolling = false; });   // offline: try again next time, no error shown
+  }
+  setInterval(function(){ if(!document.hidden) refreshHold(); }, 10000);
+  setInterval(renderHoldAge, 1000);
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden) refreshHold(); });
+  window.addEventListener('focus', refreshHold);
+  window.addEventListener('online', refreshHold);
+  
   function setConn(ok, label){
     state.connected = ok;
     var el = document.getElementById('connIndicator');
@@ -866,11 +951,12 @@
     document.getElementById('connLabel').textContent = label;
   }
 
-  function loadSnapshot(){
+  function loadSnapshot(quiet){
     if(!state.webAppUrl){ setConn(false, 'No sheet connected'); return Promise.resolve(); }
-    setConn(false, 'Loading…');
+    if(quiet !== true) setConn(false, 'Loading…');
     return apiGet().then(function(res){
       if(!res.ok){ setConn(false, 'Error: ' + res.error); return; }
+      if(res.rev !== undefined) lastRev = res.rev;
       state.trackedMap = {};
       state.allOrderIds = {};
       res.data.forEach(function(row){
@@ -879,6 +965,7 @@
       });
       state.unmatched = res.unmatched || [];
       state.hold = res.hold || [];
+         lastHoldRefresh = Date.now();
       state.names = res.names || [];
       state.couriers = res.couriers || [];
       state.skus = res.skus || [];
@@ -891,7 +978,7 @@
       renderHoldView();
       updateNavCounts();
     }).catch(function(err){
-      setConn(false, 'Connection failed');
+      if(quiet !== true) setConn(false, 'Connection failed');
       console.error(err);
     });
   }
@@ -1353,7 +1440,7 @@
     var skipped = allPending.length - pending.length;
     if(pending.length === 0){ alert('These pairs have no Third Party, so they cannot be synced.'); return; }
     var btn = document.getElementById('syncNowBtn');
-    btn.disabled = true; btn.textContent = 'Syncing…';
+   btn.disabled = true; btn.innerHTML = BC_SPINNER + 'Please wait…';
     apiPost({ action: 'sync', pairs: pending.map(function(p){ return {orderId:p.orderId, trackingId:p.trackingId, source:p.source||'Regular', thirdParty:p.thirdParty||''}; }) })
       .then(function(res){
         btn.disabled = false; btn.textContent = 'Sync to sheet';
@@ -1498,11 +1585,29 @@
     if(state.names.length && state.names.indexOf(name) === -1){ alert('Pick a Name from the list.'); nameInput.focus(); return; }
 
     var btn = document.getElementById('addHoldBtn');
-    btn.disabled = true; btn.textContent = 'Adding…';
+    var msg = document.getElementById('holdAddMsg');
+    var lockEls = [orderInput, trackingInput, quantityInput, noteInput, courierInput, nameInput, holdSkuInputEl];
+
+    function showMsg(kind, text, ms){
+      clearTimeout(showMsg.t);
+      msg.className = 'hold-msg show ' + kind;
+      msg.textContent = text;
+      if(ms){ showMsg.t = setTimeout(function(){ msg.className = 'hold-msg'; }, ms); }
+    }
+    function setBusy(busy){
+      lockEls.forEach(function(el){ el.disabled = busy; });
+      holdSkuChips.style.pointerEvents = busy ? 'none' : '';
+      btn.disabled = busy;
+      btn.innerHTML = busy ? BC_SPINNER + 'Please wait…' : 'Add to hold list';
+      if(!busy){ renderSkuChips(); }
+    }
+
+    msg.className = 'hold-msg';
+    setBusy(true);
     apiPost({ action: 'addHold', orderId: orderId, trackingId: trackingId, sku: sku, quantity: quantity, note: note, courier: courier, name: name })
       .then(function(res){
-        btn.disabled = false; btn.textContent = 'Add to hold list';
-        if(!res.ok){ alert('Could not add: ' + res.error); return; }
+        setBusy(false);
+        if(!res.ok){ showMsg('err', 'Could not add: ' + res.error, 5000); return; }
         orderInput.value = '';
         trackingInput.value = '';
         quantityInput.value = '';
@@ -1512,10 +1617,20 @@
         chosenSkus = [];
         renderSkuChips();
         orderInput.focus();
-        loadSnapshot();
+        showMsg('ok', 'Added ✓ Status: ' + (res.status || 'Scanning'), 2000);
+        // show the new row quickly: reload only the Hold List
+        apiGetHold().then(function(r){
+          if(r && r.ok && r.hold){
+            state.hold = r.hold;
+            lastHoldRefresh = Date.now();
+            renderHoldView();
+            updateNavCounts();
+            renderHoldAge();
+          }
+        }).catch(function(){ loadSnapshot(); });
       }).catch(function(){
-        btn.disabled = false; btn.textContent = 'Add to hold list';
-        alert('Could not add — check your connection.');
+        setBusy(false);
+        showMsg('err', 'Could not add — check your connection.', 5000);
       });
   });
 
@@ -1533,6 +1648,7 @@
       return true;
     });
     if(list.length === 0){ empty.style.display = 'block'; } else { empty.style.display = 'none'; }
+       list.sort(function(a, b){ return b.row - a.row; });
     list.forEach(function(h){
       var tr = document.createElement('tr');
       var resolveBtn = h.status !== 'Resolved' ? '<button class="btn ghost resolve-hold-btn" data-row="'+h.row+'">Resolve</button>' : '';
@@ -1600,10 +1716,11 @@
   // ---------- Searchable dropdown (combo) ----------
   // Wires a text <input> + a floating <div> list to an options array.
   // Selecting an item (click or Enter) locks the input to that exact value.
-  function setupCombo(inputId, listId, getOptions, onSelect){
+function setupCombo(inputId, listId, getOptions, onSelect){
     var input = document.getElementById(inputId);
     var list = document.getElementById(listId);
     var highlighted = -1;
+    var showAll = false;   // true when the field already holds a chosen value: show the full list
 
     function render(options){
       list.innerHTML = '';
@@ -1626,17 +1743,26 @@
       list.classList.add('show');
     }
 
-    input.addEventListener('input', function(){
+    function openList(){
       highlighted = -1;
+      var cur = input.value.trim().toLowerCase();
+      var all = getOptions();
+      showAll = !!cur && all.some(function(o){ return o.toLowerCase() === cur; });
+      if(showAll){ input.select(); }          // typing now replaces the old choice
+      input.dispatchEvent(new Event('input'));
+    }
+
+    input.addEventListener('input', function(e){
+      if(e && e.isTrusted){ showAll = false; highlighted = -1; }   // the person is typing: filter again
       var term = input.value.trim().toLowerCase();
       var all = getOptions();
-      var filtered = term ? all.filter(function(o){ return o.toLowerCase().indexOf(term) !== -1; }) : all;
+      var filtered = (term && !showAll) ? all.filter(function(o){ return o.toLowerCase().indexOf(term) !== -1; }) : all;
       render(filtered);
     });
-    input.addEventListener('focus', function(){
-      input.dispatchEvent(new Event('input'));
-    });
+    input.addEventListener('focus', openList);
+    input.addEventListener('click', function(){ if(!list.classList.contains('show')) openList(); });
     input.addEventListener('blur', function(){
+      showAll = false;
       setTimeout(function(){ list.classList.remove('show'); }, 150);
     });
     input.addEventListener('keydown', function(e){
